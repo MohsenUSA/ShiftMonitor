@@ -1,0 +1,7 @@
+# Ignore everything…
+*
+
+# …except the app, the landing page, and this ignore file
+!BreakUP.html
+!index.html
+!.gitignore

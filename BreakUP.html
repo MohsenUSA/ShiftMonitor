@@ -1,0 +1,2682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Break Tracker</title>
+<link id="favicon" rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%234f46e5'/%3E%3Cstop offset='1' stop-color='%23818cf8'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' rx='8' fill='url(%23g)'/%3E%3Cg fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 13h13v8a5 5 0 0 1-5 5h-3a5 5 0 0 1-5-5v-8z'/%3E%3Cpath d='M20 14.5h2.5a3 3 0 0 1 0 6H20'/%3E%3Cpath d='M11.5 9.5c0-1.2 1-1.2 1-2.5'/%3E%3Cpath d='M16 9.5c0-1.2 1-1.2 1-2.5'/%3E%3C/g%3E%3C/svg%3E">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg:#f4f6fb;
+  --surface:#ffffff;
+  --border:#e6e9f2;
+  --text:#0f172a;
+  --text-2:#475569;
+  --text-3:#94a3b8;
+
+  --accent:#4f46e5;
+  --accent-soft:#eef2ff;
+
+  --green:#16a34a;     --green-soft:#ecfdf5;  --green-border:#bbf7d0;
+  --amber:#d97706;     --amber-soft:#fffbeb;  --amber-border:#fde68a;
+  --orange:#ea580c;    --orange-soft:#fff7ed; --orange-border:#fed7aa;
+  --red:#dc2626;       --red-soft:#fef2f2;    --red-border:#fecaca;
+  --blue:#2563eb;      --blue-soft:#eff6ff;   --blue-border:#bfdbfe;
+
+  --radius:14px;
+  --shadow:0 1px 2px rgba(15,23,42,.04), 0 8px 24px -12px rgba(15,23,42,.10);
+  --mono:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+*{ box-sizing:border-box; }
+
+html,body{ height:100%; }
+
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font-family:"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size:15px;
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ---------- Header ---------- */
+
+.topbar{
+  position:sticky;
+  top:0;
+  z-index:10;
+  background:rgba(255,255,255,.85);
+  backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+}
+
+.topbar-inner{
+  max-width:min(96vw, 1600px);
+  margin:0 auto;
+  padding:14px 24px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+}
+
+.brand{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  font-weight:800;
+  font-size:1.05rem;
+  letter-spacing:-.01em;
+}
+
+.brand-mark{
+  width:34px;
+  height:34px;
+  border-radius:10px;
+  background:linear-gradient(135deg, var(--accent), #818cf8);
+  display:grid;
+  place-items:center;
+  box-shadow:0 2px 8px rgba(79,70,229,.35);
+}
+
+.brand-mark svg{
+  width:28px;
+  height:28px;
+}
+
+.topbar-right{
+  display:flex;
+  align-items:center;
+  gap:14px;
+}
+
+.bell{
+  width:36px;
+  height:36px;
+  padding:0;
+  border-radius:10px;
+  border:1px solid var(--border);
+  background:#f1f5f9;
+  font-size:1rem;
+}
+
+.bell.on{
+  background:var(--accent-soft);
+  border-color:#c7d2fe;
+}
+
+.clock{ text-align:right; }
+
+.clock-time{
+  font-family:var(--mono);
+  font-weight:600;
+  font-size:1rem;
+}
+
+.clock-date{
+  font-size:.78rem;
+  color:var(--text-3);
+}
+
+/* ---------- Layout ---------- */
+
+.page{
+  max-width:min(96vw, 1600px);
+  margin:0 auto;
+  padding:24px;
+}
+
+.storage-warning{
+  background:var(--amber-soft);
+  border:1px solid var(--amber-border);
+  color:#92400e;
+  border-radius:var(--radius);
+  padding:12px 16px;
+  margin-bottom:24px;
+  font-size:.88rem;
+}
+
+.stats{
+  display:grid;
+  grid-template-columns:repeat(4, 1fr);
+  gap:14px;
+  margin-bottom:24px;
+}
+
+.stat{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  box-shadow:var(--shadow);
+  padding:14px 16px;
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+
+.stat-icon{
+  width:40px;
+  height:40px;
+  border-radius:10px;
+  display:grid;
+  place-items:center;
+  font-size:1.1rem;
+  flex-shrink:0;
+}
+
+.stat-num{
+  font-size:1.35rem;
+  font-weight:800;
+  line-height:1.1;
+  letter-spacing:-.02em;
+}
+
+.stat-label{
+  font-size:.78rem;
+  color:var(--text-2);
+}
+
+.accordions{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:14px;
+  margin-bottom:24px;
+}
+
+.acc{
+  margin-bottom:0;
+  padding:0;
+  align-self:start;
+}
+
+.acc summary{
+  cursor:pointer;
+  list-style:none;
+  padding:14px 20px;
+  font-weight:700;
+  font-size:.95rem;
+  letter-spacing:-.01em;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  user-select:none;
+}
+
+.acc summary::-webkit-details-marker{ display:none; }
+
+.acc summary{ border-radius:var(--radius); }
+
+.acc summary:hover{ background:#f6f8fc; }
+
+.acc summary::after{
+  content:'▾';
+  margin-left:auto;
+  width:26px;
+  height:26px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border:1px solid var(--border);
+  border-radius:50%;
+  background:white;
+  color:var(--text-2);
+  font-size:.75rem;
+  transition:transform .2s;
+  flex-shrink:0;
+}
+
+.acc summary:hover::after{
+  border-color:var(--accent);
+  color:var(--accent);
+}
+
+.acc[open] summary::after{ transform:rotate(180deg); }
+
+.acc-hint{
+  font-weight:400;
+  font-size:.78rem;
+  color:var(--text-3);
+}
+
+.acc-body{
+  padding:4px 20px 20px;
+  border-top:1px solid var(--border);
+  padding-top:16px;
+}
+
+.acc .add-row,
+.acc .field-row{ max-width:440px; }
+
+.acc .btn-primary{
+  width:auto;
+  padding:9px 26px;
+}
+
+.card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  box-shadow:var(--shadow);
+  padding:20px;
+  margin-bottom:24px;
+}
+
+.card h2{
+  margin:0 0 4px;
+  font-size:1rem;
+  font-weight:700;
+  letter-spacing:-.01em;
+}
+
+.card .hint{
+  margin:0 0 16px;
+  font-size:.82rem;
+  color:var(--text-3);
+}
+
+/* ---------- Forms ---------- */
+
+label{
+  display:block;
+  font-size:.78rem;
+  font-weight:600;
+  color:var(--text-2);
+  margin:12px 0 4px;
+}
+
+input, select{
+  width:100%;
+  padding:9px 12px;
+  border:1px solid var(--border);
+  border-radius:10px;
+  background:#fbfcfe;
+  font:inherit;
+  font-size:.9rem;
+  color:var(--text);
+}
+
+input:focus, select:focus{
+  outline:2px solid var(--accent);
+  outline-offset:-1px;
+  background:white;
+}
+
+.field-row{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+
+button{
+  font:inherit;
+  font-size:.85rem;
+  font-weight:600;
+  border:none;
+  border-radius:10px;
+  padding:9px 14px;
+  cursor:pointer;
+  transition:filter .15s, background .15s;
+}
+
+button:hover{ filter:brightness(1.06); }
+
+button:disabled{
+  opacity:.4;
+  cursor:not-allowed;
+  filter:none;
+}
+
+.toast{
+  position:fixed;
+  bottom:24px;
+  left:50%;
+  transform:translateX(-50%);
+  align-items:center;
+  gap:12px;
+  background:var(--text);
+  color:white;
+  padding:10px 10px 10px 18px;
+  border-radius:999px;
+  font-size:.85rem;
+  font-weight:600;
+  box-shadow:0 8px 24px rgba(15,23,42,.25);
+  z-index:99;
+  display:none;
+  max-width:min(92vw, 520px);
+}
+
+.toast-x{
+  flex-shrink:0;
+  width:22px;
+  height:22px;
+  padding:0;
+  border:none;
+  border-radius:50%;
+  background:rgba(255,255,255,.15);
+  color:white;
+  font-size:.7rem;
+  line-height:1;
+}
+
+.toast-x:hover{ background:rgba(255,255,255,.3); filter:none; }
+
+.btn-primary{
+  background:var(--accent);
+  color:white;
+  width:100%;
+  margin-top:14px;
+}
+
+.btn-sm{
+  padding:6px 12px;
+  font-size:.8rem;
+  border-radius:8px;
+}
+
+.btn-start{ background:var(--accent); color:white; }
+.btn-end{ background:var(--red); color:white; }
+
+.btn-ghost{
+  background:transparent;
+  color:var(--text-3);
+  padding:4px 8px;
+}
+
+.btn-outline{
+  background:white;
+  border:1px solid var(--border);
+  color:var(--text-2);
+}
+
+.btn-outline:hover{
+  border-color:var(--accent);
+  color:var(--accent);
+  filter:none;
+}
+
+.btn-ghost:hover{ color:var(--red); filter:none; }
+
+.select-chips{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+}
+
+.chip{
+  background:#f1f5f9;
+  border:1px solid var(--border);
+  border-radius:999px;
+  padding:6px 13px;
+  font-size:.84rem;
+  font-weight:600;
+  color:var(--text-2);
+}
+
+.chip:hover{ filter:none; background:#e8edf5; }
+
+.chip.selected{
+  background:var(--accent);
+  border-color:var(--accent);
+  color:white;
+}
+
+.form-error{
+  margin-top:10px;
+  font-size:.8rem;
+  font-weight:600;
+  color:var(--red);
+}
+
+.add-row{
+  display:flex;
+  gap:8px;
+}
+
+.add-row input{ flex:1; }
+
+.add-row button{
+  background:var(--accent);
+  color:white;
+  flex-shrink:0;
+}
+
+/* ---------- Roster ---------- */
+
+.roster{
+  margin-top:14px;
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+}
+
+.pill{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  background:#f1f5f9;
+  border:1px solid var(--border);
+  padding:5px 6px 5px 6px;
+  border-radius:999px;
+  font-size:.84rem;
+  font-weight:500;
+}
+
+.pill .avatar{ width:22px; height:22px; font-size:.6rem; }
+
+.pill-x{
+  background:none;
+  border:none;
+  padding:0 6px 0 0;
+  color:var(--text-3);
+  font-size:.95rem;
+  line-height:1;
+}
+
+.pill-x:hover{ color:var(--red); filter:none; }
+
+/* ---------- Shift cards ---------- */
+
+.avatar{
+  width:40px;
+  height:40px;
+  border-radius:50%;
+  display:inline-grid;
+  place-items:center;
+  color:white;
+  font-weight:700;
+  font-size:.85rem;
+  flex-shrink:0;
+}
+
+.shift-row{
+  position:relative;
+  display:flex;
+  align-items:center;
+  gap:14px;
+  padding:10px 2px;
+  border-bottom:1px solid #f1f4f9;
+}
+
+.shift-row > button{ flex-shrink:0; }
+
+.shift-row:last-child{ border-bottom:none; }
+
+.shift-who{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  width:185px;
+  flex-shrink:0;
+  min-width:0;
+}
+
+.shift-who .avatar{ width:34px; height:34px; font-size:.72rem; }
+
+.shift-name{
+  font-weight:700;
+  font-size:.87rem;
+  letter-spacing:-.01em;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.shift-time{
+  font-size:.72rem;
+  color:var(--text-3);
+  white-space:nowrap;
+}
+
+.shift-progress-line{
+  position:absolute;
+  left:0;
+  bottom:0;
+  height:2px;
+  border-radius:2px;
+  background:linear-gradient(90deg, var(--accent), #818cf8);
+  opacity:.5;
+  transition:width 1s linear;
+}
+
+.shift-main{
+  flex:1;
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:5px;
+}
+
+.shift-actions{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+}
+
+.shift-breaks{
+  display:flex;
+  align-items:flex-start;
+  gap:8px;
+  min-width:0;
+  overflow-x:auto;
+  overscroll-behavior-x:contain;  /* ribbon scroll never becomes browser back/forward */
+  padding:2px 0 4px;
+}
+
+
+.shift-breaks::-webkit-scrollbar{ height:5px; }
+
+.shift-breaks::-webkit-scrollbar-thumb{
+  background:#d4dae6;
+  border-radius:3px;
+}
+
+.shift-breaks::-webkit-scrollbar-track{ background:transparent; }
+
+.edit-panel{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  padding:2px 0;
+}
+
+.ef-row{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+
+.ef-label{
+  width:92px;
+  flex-shrink:0;
+  font-size:.74rem;
+  font-weight:600;
+  color:var(--text-2);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.ef-row input{ width:auto; }
+
+.ef-dash{ color:var(--text-3); }
+
+.ef-hint{
+  font-size:.72rem;
+  color:var(--text-3);
+  margin-left:6px;
+}
+
+.break-cell{
+  flex:1 0 auto;
+  display:flex;
+  align-items:center;
+  gap:7px;
+  padding:7px 10px;
+  border:1px solid var(--border);
+  border-radius:10px;
+  background:#fbfcfe;
+  font-size:.78rem;
+  white-space:nowrap;
+}
+
+/* cells are content-sized; nothing inside ever shrinks or clips */
+.break-cell > *{ flex-shrink:0; }
+
+.break-cell.upcoming{ background:var(--amber-soft);  border-color:var(--amber-border); }
+.break-cell.soon    { background:var(--orange-soft); border-color:var(--orange-border); }
+.break-cell.overdue { background:var(--red-soft);    border-color:var(--red-border); }
+.break-cell.active  { background:var(--blue-soft);   border-color:var(--blue-border); }
+.break-cell.done    { background:var(--green-soft);  border-color:var(--green-border); }
+
+.dot{
+  width:9px;
+  height:9px;
+  border-radius:50%;
+  flex-shrink:0;
+  background:#cbd5e1;
+}
+
+.upcoming .dot{ background:var(--amber); }
+.soon     .dot{ background:var(--orange); }
+.overdue  .dot{ background:var(--red); }
+.done     .dot{ background:var(--green); }
+
+.active .dot{
+  background:var(--blue);
+  animation:pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes pulse{
+  0%,100%{ box-shadow:0 0 0 0 rgba(37,99,235,.35); }
+  50%    { box-shadow:0 0 0 6px rgba(37,99,235,0); }
+}
+
+.bc-label{
+  font-weight:600;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.bc-time{ color:var(--text-2); }
+
+.bc-status{
+  margin-left:auto;
+  font-weight:700;
+  font-size:.72rem;
+}
+
+.later    .bc-status{ color:var(--text-3); }
+.upcoming .bc-status{ color:var(--amber); }
+.soon     .bc-status{ color:var(--orange); }
+.overdue  .bc-status{ color:var(--red); }
+.active   .bc-status{ color:var(--blue); }
+.done     .bc-status{ color:var(--green); }
+
+.btn-xs{
+  padding:4px 10px;
+  font-size:.72rem;
+  border-radius:7px;
+}
+
+.timer{
+  font-family:var(--mono);
+  font-weight:700;
+  font-size:.82rem;
+  color:var(--blue);
+}
+
+.timer.over{ color:var(--red); }
+
+/* ---------- Gantt timeline ---------- */
+
+.g-chart{
+  --glabel:150px;
+  position:relative;
+}
+
+.g-gridwrap, .g-nowwrap{
+  position:absolute;
+  top:0;
+  bottom:0;
+  left:var(--glabel);
+  right:0;
+  pointer-events:none;
+}
+
+.g-gridwrap{ z-index:0; }
+.g-nowwrap{ z-index:3; }
+
+.g-line{
+  position:absolute;
+  top:22px;
+  bottom:0;
+  width:1px;
+  background:#eef1f7;
+}
+
+.g-now{
+  position:absolute;
+  top:18px;
+  bottom:0;
+  width:2px;
+  border-radius:2px;
+  background:var(--red);
+  opacity:.7;
+}
+
+.g-axis{
+  position:relative;
+  height:22px;
+  margin-left:var(--glabel);
+}
+
+.g-hour{
+  position:absolute;
+  top:0;
+  transform:translateX(-50%);
+  font-size:.68rem;
+  color:var(--text-3);
+  white-space:nowrap;
+}
+
+.g-row{
+  position:relative;
+  z-index:1;
+  display:flex;
+  align-items:center;
+  height:34px;
+  border-radius:8px;
+  cursor:pointer;
+}
+
+/* press-and-hold feedback: highlight the row while the mouse/finger is
+   down on the name or schedule, clears the moment it's released */
+.g-row:active{
+  background:var(--accent-soft);
+  box-shadow:0 0 0 1px #c7d2fe inset;
+}
+
+.g-label{
+  width:var(--glabel);
+  flex-shrink:0;
+  padding-right:12px;
+  font-size:.8rem;
+  font-weight:600;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.g-idx{
+  display:inline-block;
+  min-width:18px;
+  margin-right:7px;
+  color:var(--text-3);
+  font-variant-numeric:tabular-nums;
+  font-weight:600;
+}
+
+.g-track{
+  position:relative;
+  flex:1;
+  height:22px;
+  overflow:hidden;
+}
+
+.g-shift{
+  position:absolute;
+  top:0;
+  bottom:0;
+  background:var(--accent-soft);
+  border:1px solid #d8defb;
+  border-radius:6px;
+}
+
+.g-break{
+  position:absolute;
+  top:3px;
+  bottom:3px;
+  min-width:4px;
+  border-radius:4px;
+  z-index:2;
+}
+
+.g-break.later   { background:#94a3b8; }
+.g-break.upcoming{ background:var(--amber); }
+.g-break.soon    { background:var(--orange); }
+.g-break.overdue { background:var(--red); }
+.g-break.done    { background:var(--green); }
+
+.g-break.active{
+  background:var(--blue);
+  animation:pulse 1.4s ease-in-out infinite;
+}
+
+.g-break.unsched{ background:#a855f7; }
+
+.g-clock{
+  position:absolute;
+  top:-3px;
+  bottom:-3px;
+  width:3px;
+  border-radius:2px;
+  z-index:2;
+}
+
+.g-clock.ok  { background:var(--green); }
+.g-clock.warn{ background:var(--amber); }
+.g-clock.bad { background:var(--red); }
+
+/* PTO time on the timeline — diagonal slate stripes over the shift bar */
+.g-pto{
+  position:absolute;
+  top:0;
+  bottom:0;
+  z-index:1;
+  border-radius:5px;
+  background:repeating-linear-gradient(135deg, #cbd5e1 0 5px, #e2e8f0 5px 10px);
+}
+
+.leg-pto{
+  background:repeating-linear-gradient(135deg, #cbd5e1 0 4px, #e2e8f0 4px 8px);
+}
+
+.pto-badge{
+  font-size:.72rem;
+  font-weight:600;
+  color:#475569;
+}
+
+.break-cell.pto{
+  background:repeating-linear-gradient(135deg, #eef1f6 0 7px, #f8fafc 7px 14px);
+  border-color:#dbe1ec;
+  color:#475569;
+}
+
+.break-cell.pto .dot{ background:#94a3b8; }
+.break-cell.pto .bc-status{ color:#64748b; }
+
+/* Shift drop — red counterpart of PTO */
+.g-drop{
+  position:absolute;
+  top:0;
+  bottom:0;
+  z-index:1;
+  border-radius:5px;
+  background:repeating-linear-gradient(135deg, #fca5a5 0 5px, #fecaca 5px 10px);
+}
+
+.leg-drop{
+  background:repeating-linear-gradient(135deg, #fca5a5 0 4px, #fecaca 4px 8px);
+}
+
+.break-cell.drop{
+  background:repeating-linear-gradient(135deg, #fde8e8 0 7px, #fef5f5 7px 14px);
+  border-color:#f6caca;
+  color:#9f1239;
+}
+
+.break-cell.drop .dot{ background:#ef4444; }
+.break-cell.drop .bc-status{ color:#dc2626; }
+
+.pto-full{
+  flex:1;
+  display:flex;
+  align-items:center;
+  font-size:.85rem;
+  font-weight:600;
+  color:#475569;
+  background:repeating-linear-gradient(135deg, #f1f5f9 0 8px, #f8fafc 8px 16px);
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:9px 14px;
+}
+
+.pto-full.drop{
+  color:#9f1239;
+  background:repeating-linear-gradient(135deg, #fde8e8 0 8px, #fef5f5 8px 16px);
+  border-color:#f6caca;
+}
+
+.stamps{
+  display:flex;
+  flex-direction:column;
+  margin-top:1px;
+}
+
+.stamp{
+  font-size:.68rem;
+  font-weight:700;
+  white-space:nowrap;
+}
+
+.stamp.ok  { color:var(--green); }
+.stamp.warn{ color:var(--amber); }
+.stamp.bad { color:var(--red); }
+
+.break-cell.unsched{
+  background:#faf5ff;
+  border-color:#e9d5ff;
+}
+
+.unsched .dot{ background:#a855f7; }
+
+.unsched .bc-status{ color:#a855f7; }
+
+.g-legend{
+  display:flex;
+  flex-wrap:wrap;
+  gap:14px;
+  margin-top:12px;
+  font-size:.72rem;
+  color:var(--text-2);
+}
+
+.g-legend span{
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+}
+
+.g-legend i{
+  width:10px;
+  height:10px;
+  border-radius:3px;
+}
+
+/* ---------- History ---------- */
+
+table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:.86rem;
+}
+
+th{
+  text-align:left;
+  font-size:.72rem;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:.05em;
+  color:var(--text-3);
+  padding:8px 10px;
+  border-bottom:1px solid var(--border);
+}
+
+td{
+  padding:9px 10px;
+  border-bottom:1px solid #f1f4f9;
+}
+
+tr:last-child td{ border-bottom:none; }
+
+.hist-acc{ border-bottom:1px solid #f1f4f9; }
+
+.hist-acc:last-child{ border-bottom:none; }
+
+.hist-acc > summary{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:10px 2px;
+  cursor:pointer;
+  list-style:none;
+  user-select:none;
+}
+
+.hist-acc > summary::-webkit-details-marker{ display:none; }
+
+.hist-acc .avatar{ width:30px; height:30px; font-size:.62rem; }
+
+.hist-name{
+  font-weight:600;
+  font-size:.88rem;
+  white-space:nowrap;
+}
+
+.hist-types{
+  flex:1;
+  min-width:0;
+  color:var(--text-3);
+  font-size:.78rem;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.hist-meta{
+  margin-left:auto;
+  font-size:.78rem;
+  color:var(--text-2);
+  white-space:nowrap;
+}
+
+.chev{
+  width:24px;
+  height:24px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border:1px solid var(--border);
+  border-radius:50%;
+  background:white;
+  color:var(--text-2);
+  font-size:.7rem;
+  transition:transform .2s;
+  flex-shrink:0;
+}
+
+details[open] > summary .chev{ transform:rotate(180deg); }
+
+.hist-acc > summary{ border-radius:8px; }
+
+.hist-acc > summary:hover{ background:#f6f8fc; }
+
+.hist-acc > summary:hover .chev{
+  border-color:var(--accent);
+  color:var(--accent);
+}
+
+.hist-acc table{
+  width:calc(100% - 42px);
+  margin:0 0 12px 42px;
+}
+
+.cell-note{
+  color:var(--text-3);
+  font-size:.74rem;
+}
+
+.card-head-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:4px;
+}
+
+.head-actions{
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+
+.seg{
+  display:inline-flex;
+  border:1px solid var(--border);
+  border-radius:8px;
+  overflow:hidden;
+}
+
+.seg-btn{
+  border:none;
+  background:white;
+  color:var(--text-2);
+  padding:6px 12px;
+  font-size:.8rem;
+  font-weight:600;
+  border-radius:0;
+}
+
+.seg-btn + .seg-btn{ border-left:1px solid var(--border); }
+
+.seg-btn.active{
+  background:var(--accent);
+  color:white;
+}
+
+.seg-btn:hover:not(.active){ background:#f6f8fc; filter:none; }
+
+.card-head-row h2{ margin:0; }
+
+/* ---------- Empty states ---------- */
+
+.empty{
+  border:1.5px dashed #d8deea;
+  border-radius:12px;
+  padding:28px 16px;
+  text-align:center;
+  color:var(--text-3);
+  font-size:.88rem;
+}
+
+.empty .empty-icon{
+  font-size:1.6rem;
+  display:block;
+  margin-bottom:6px;
+}
+
+/* ---------- Responsive ---------- */
+
+@media (max-width:920px){
+  .accordions{ grid-template-columns:1fr; }
+  .stats{ grid-template-columns:repeat(2, 1fr); }
+  .g-chart{ --glabel:90px; }
+  .shift-row{ flex-wrap:wrap; }
+  .shift-who{ width:auto; flex:1; }
+  .shift-main{ flex-basis:100%; }
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <span class="brand-mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 9h12v7a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4V9z"/>
+          <path d="M16 10h2.5a2.5 2.5 0 0 1 0 5H16"/>
+          <path d="M7.5 5.5c0-1 .8-1 .8-2"/>
+          <path d="M11.5 5.5c0-1 .8-1 .8-2"/>
+        </svg>
+      </span>
+      Break Tracker
+    </div>
+    <div class="topbar-right">
+      <button class="bell" id="bellBtn" onclick="toggleReminders()"
+              title="Remind me 5 minutes before each scheduled break">🔕</button>
+      <div class="clock">
+        <div class="clock-time" id="clockTime">--:--</div>
+        <div class="clock-date" id="clockDate"></div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="page">
+
+  <div class="storage-warning" id="storageWarning" hidden>
+    ⚠️ This browser view is blocking local storage, so your data won't be saved
+    after a reload. Open this file in a regular browser tab (Chrome, Safari,
+    Firefox…) to keep your data.
+  </div>
+
+  <div class="stats" id="stats"></div>
+
+  <div class="accordions">
+
+    <details class="card acc">
+      <summary>👥 Team <span class="acc-hint">add &amp; manage employees</span></summary>
+      <div class="acc-body">
+        <div class="add-row">
+          <input id="employeeName" placeholder="Employee name"
+                 onkeydown="if(event.key==='Enter')addEmployee()">
+          <button onclick="addEmployee()">Add</button>
+        </div>
+        <div class="roster" id="employeeList"></div>
+      </div>
+    </details>
+
+    <details class="card acc">
+      <summary>🗓️ Schedule a Shift <span class="acc-hint">breaks planned automatically</span></summary>
+      <div class="acc-body">
+        <p class="hint">A 10-min break 2h in (shifts 2h10+) · 30-min lunch on shifts over 5h · second 10-min break after lunch on shifts over 5h30.</p>
+
+        <label>Employee</label>
+        <div class="select-chips" id="employeeChips"></div>
+        <div class="form-error" id="shiftError" hidden></div>
+
+        <div class="field-row">
+          <div>
+            <label for="shiftStart">Start</label>
+            <input type="time" id="shiftStart" value="09:00">
+          </div>
+          <div>
+            <label for="shiftEnd">End</label>
+            <input type="time" id="shiftEnd" value="17:00">
+          </div>
+        </div>
+
+        <button class="btn-primary" onclick="addShift()">Add Shift</button>
+      </div>
+    </details>
+
+  </div>
+
+  <div class="card">
+    <div class="card-head-row">
+      <h2>Timeline</h2>
+      <div class="seg">
+        <button id="gm-shift" class="seg-btn active" onclick="setGanttMode('shift')">By shift</button>
+        <button id="gm-emp" class="seg-btn" onclick="setGanttMode('employee')">By employee</button>
+      </div>
+    </div>
+    <p class="hint">Shifts and breaks across the day. The red line is now.</p>
+    <div id="gantt"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-head-row">
+      <h2>Today's Shifts</h2>
+      <div class="head-actions">
+        <button class="btn-outline btn-sm" onclick="startNewDay()" title="Clear all shifts and break history, keep employees">⟳ New Day</button>
+      </div>
+    </div>
+    <p class="hint">Live view of every scheduled break. Rows change color as breaks come due.</p>
+    <div id="dashboard"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-head-row">
+      <h2>Break History</h2>
+      <div class="head-actions">
+        <button class="btn-outline btn-sm" onclick="exportHistoryCSV()" title="Plain-data export">⬇ CSV</button>
+        <button class="btn-outline btn-sm" onclick="exportHistoryExcel()" title="Excel export with color-coded cells">⬇ Excel</button>
+        <button class="btn-ghost btn-sm" onclick="clearHistory()">Clear</button>
+      </div>
+    </div>
+    <p class="hint">Completed breaks, grouped by employee.</p>
+    <div id="historyWrap"></div>
+  </div>
+
+</main>
+
+<script>
+
+/* Surface any script error as a visible banner instead of failing silently,
+   so problems in restricted environments (preview panes etc.) are diagnosable. */
+window.addEventListener('error', e => {
+  let b = document.getElementById('jsErrorBanner');
+  if(!b){
+    b = document.createElement('div');
+    b.id = 'jsErrorBanner';
+    b.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:#dc2626;color:#fff;padding:10px 16px;font:600 13px ui-monospace,monospace;z-index:999;white-space:pre-wrap;';
+    document.body.appendChild(b);
+  }
+  b.textContent = '⚠ Script error: ' + e.message + (e.lineno ? ' (line ' + e.lineno + ')' : '');
+});
+
+/* localStorage throws in sandboxed contexts (e.g. editor preview panes,
+   some private-browsing modes). Fall back to in-memory storage so the app
+   still works, and warn that data won't survive a reload. */
+const store = (() => {
+  try{
+    localStorage.setItem('__probe__', '1');
+    localStorage.removeItem('__probe__');
+    return localStorage;
+  }catch(e){
+    const mem = {};
+    return {
+      getItem: k => (k in mem ? mem[k] : null),
+      setItem: (k,v) => { mem[k] = String(v); },
+      volatile: true
+    };
+  }
+})();
+
+function load(key){
+  try{
+    const data = JSON.parse(store.getItem(key));
+    return Array.isArray(data) ? data : [];
+  }
+  catch(e){ return []; }
+}
+
+/* Drop malformed records left behind by older versions — one bad break
+   without a scheduled time used to crash every render. */
+const TIME_RE = /^\d{1,2}:\d{2}$/;
+
+let employees = load('employees').filter(e =>
+  e && e.id != null && typeof e.name === 'string' && e.name.trim());
+
+let shifts = load('shifts')
+  .filter(s => s && s.id != null && TIME_RE.test(s.start) && TIME_RE.test(s.end) && Array.isArray(s.breaks))
+  .map(s => ({ ...s, breaks: s.breaks.filter(b => b && TIME_RE.test(b.scheduled)) }));
+
+let historyLog = load('historyLog').filter(h => h && h.employee && h.type);
+
+function saveData(){
+  store.setItem('employees', JSON.stringify(employees));
+  store.setItem('shifts', JSON.stringify(shifts));
+  store.setItem('historyLog', JSON.stringify(historyLog));
+}
+
+if(store.volatile){
+  document.getElementById('storageWarning').hidden = false;
+}
+
+/* ---------- Helpers ---------- */
+
+const esc = s => String(s).replace(/[&<>"']/g,
+  c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function minutesBetween(start, end){
+  const [sh,sm] = start.split(':').map(Number);
+  const [eh,em] = end.split(':').map(Number);
+  let diff = (eh*60+em) - (sh*60+sm);
+  if(diff < 0) diff += 1440;            // overnight shift wraps past midnight
+  return diff;
+}
+
+function addMinutes(time, mins){
+  const [h,m] = time.split(':').map(Number);
+  const total = (h*60+m) + mins;
+  return `${String(Math.floor(total/60)%24).padStart(2,'0')}:${String(total%60).padStart(2,'0')}`;
+}
+
+function formatTime(t){
+  const [h,m] = t.split(':').map(Number);
+  return `${h%12||12}:${String(m).padStart(2,'0')} ${h>=12?'PM':'AM'}`;
+}
+
+const toMin = t => { const [h,m] = t.split(':').map(Number); return h*60+m; };
+
+/* All shift math runs on a "shift timeline": minutes since midnight, allowed
+   to run past 1440 when a shift crosses midnight. A break scheduled at 01:30
+   inside a 23:30–03:30 shift is minute 1530, not minute 90 of today. */
+function shiftSpan(shift){
+  const s = toMin(shift.start);
+  return { s, e: s + minutesBetween(shift.start, shift.end) };
+}
+
+function breakAbs(br, shift){
+  const { s } = shiftSpan(shift);
+  return s + ((toMin(br.scheduled) - s + 1440) % 1440);
+}
+
+/* Off-time kinds carved out of a shift. PTO = paid (gray), Drop = an
+   uncovered dropped portion (red). Both shorten the working window at the
+   start (arrives later) and/or end (leaves earlier). Stored on the shift
+   as ptoStart/ptoEnd/dropStart/dropEnd (minutes). */
+const OFF_KINDS = {
+  pto:  { word:'PTO',  emoji:'🌴', cls:'pto'  },
+  drop: { word:'Drop', emoji:'⛔', cls:'drop' }
+};
+
+const offStartMin = s => (s.ptoStart || 0) + (s.dropStart || 0);
+const offEndMin   = s => (s.ptoEnd || 0) + (s.dropEnd || 0);
+
+/* The working window — scheduled shift minus all off-time. Everything that
+   asks "when is this person actually working" uses this, not shiftSpan. */
+function workSpan(shift){
+  const { s, e } = shiftSpan(shift);
+  return { s: s + offStartMin(shift), e: e - offEndMin(shift) };
+}
+
+const minToHM = m => {
+  m = ((Math.round(m) % 1440) + 1440) % 1440;
+  return `${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`;
+};
+
+function workMinutes(shift){
+  return minutesBetween(shift.start, shift.end) - offStartMin(shift) - offEndMin(shift);
+}
+
+function isFullOff(shift){
+  return (offStartMin(shift) + offEndMin(shift)) > 0 && workMinutes(shift) <= 0;
+}
+
+/* For a full-shift carve-out, which kind labels it (the larger one wins). */
+function fullOffKind(shift){
+  return ((shift.dropStart||0)+(shift.dropEnd||0)) >= ((shift.ptoStart||0)+(shift.ptoEnd||0)) ? 'drop' : 'pto';
+}
+
+/* Human summary combining both kinds, e.g. "PTO 1h 00m end · Drop 30m start". */
+function offSummary(shift){
+  if(isFullOff(shift)) return 'Full-shift ' + OFF_KINDS[fullOffKind(shift)].word;
+  const part = kind => {
+    const a = [];
+    if(shift[kind+'Start']) a.push(`${fmtDur(shift[kind+'Start'])} start`);
+    if(shift[kind+'End'])   a.push(`${fmtDur(shift[kind+'End'])} end`);
+    return a.length ? OFF_KINDS[kind].word + ' ' + a.join(' · ') : '';
+  };
+  return [part('pto'), part('drop')].filter(Boolean).join(' · ');
+}
+
+/* Off-time blocks in chronological order — for ribbon chips & timeline segments.
+   Returns {kind, edge, mins, from, to} in absolute shift-timeline minutes. */
+function offBlocks(shift){
+  const { s, e } = shiftSpan(shift);
+  const out = [];
+  let cur = s;
+  for(const kind of ['pto','drop']){                 // start edge, outermost first
+    const m = shift[kind+'Start'] || 0;
+    if(m > 0){ out.push({kind, edge:'start', mins:m, from:cur, to:cur+m}); cur += m; }
+  }
+  const endSegs = [];
+  let endCur = e;
+  for(const kind of ['drop','pto']){                 // end edge, innermost first
+    const m = shift[kind+'End'] || 0;
+    if(m > 0){ endSegs.push({kind, edge:'end', mins:m, from:endCur-m, to:endCur}); endCur -= m; }
+  }
+  endSegs.reverse().forEach(b => out.push(b));        // back to chronological
+  return out;
+}
+
+/* Plan breaks for the working window (shift minus all off-time at each edge). */
+function planBreaksFor(start, end, offStart, offEnd){
+  const workMin = minutesBetween(start, end) - (offStart||0) - (offEnd||0);
+  if(workMin <= 0) return [];
+  const effStart = addMinutes(start, offStart || 0);
+  return createBreaks(effStart, addMinutes(effStart, workMin));
+}
+
+/* Clock-time minutes anchored to a shift: early-morning hours count as
+   next-day for overnight shifts (with a 6h grace window past shift end). */
+function anchorMin(rawMin, shift){
+  const { e } = shiftSpan(shift);
+  if(e > 1440 && rawMin < e - 1440 + 360) return rawMin + 1440;
+  return rawMin;
+}
+
+function nowAbs(shift){
+  const now = new Date();
+  return anchorMin(now.getHours()*60 + now.getMinutes() + now.getSeconds()/60, shift);
+}
+
+const fmtDur = m => {
+  m = Math.max(1, Math.round(m));
+  return m < 60 ? `${m}m` : `${Math.floor(m/60)}h ${String(m%60).padStart(2,'0')}m`;
+};
+
+// Drop planned breaks that don't fit inside their shift (older versions
+// scheduled some past the shift end). Runs here, after the time helpers exist.
+shifts = shifts.map(s => ({ ...s, breaks: s.breaks.filter(b =>
+  b.status !== 'scheduled' || breakAbs(b, s) + b.expected <= shiftSpan(s).e) }));
+
+function initials(name){
+  return name.trim().split(/\s+/).map(w=>w[0]).join('').slice(0,2).toUpperCase();
+}
+
+function avatarColor(name){
+  let hash = 0;
+  for(const ch of name) hash = (hash*31 + ch.charCodeAt(0)) >>> 0;
+  return `hsl(${hash % 360} 60% 48%)`;
+}
+
+function getEmployeeName(id){
+  return employees.find(e=>e.id===id)?.name || 'Unknown';
+}
+
+/* ---------- Break scheduling ---------- */
+
+/* Break rules — every break must fit inside the shift:
+   - 10-min Break #1, 2h in (only on shifts of 2h10+ — shorter shifts get none)
+   - over 5h (301+ min): 30-min Lunch, 5h in (pulled earlier if it wouldn't fit)
+   - over 5h30 (331+ min): 10-min Break #2, midway between lunch end and shift end */
+function createBreaks(start, end){
+  const shiftMinutes = minutesBetween(start, end);
+  const mk = (type, offset, expected) => ({
+    type, scheduled:addMinutes(start, offset), expected,
+    status:'scheduled', actualStart:null, actualEnd:null
+  });
+
+  const breaks = [];
+
+  if(shiftMinutes >= 130) breaks.push(mk('Break #1', 120, 10));
+
+  if(shiftMinutes > 300){
+    breaks.push(mk('Lunch', Math.min(300, shiftMinutes - 30), 30));
+    if(shiftMinutes > 330){
+      breaks.push(mk('Break #2',
+        Math.min(330 + Math.floor((shiftMinutes - 330) / 2), shiftMinutes - 10), 10));
+    }
+  }
+
+  return breaks;
+}
+
+/* ---------- Actions ---------- */
+
+let selectedEmployeeId = null;
+
+function selectEmployee(id){
+  selectedEmployeeId = selectedEmployeeId === id ? null : id;
+  document.getElementById('shiftError').hidden = true;
+  renderEmployees();
+}
+
+function addEmployee(){
+  const input = document.getElementById('employeeName');
+  const name = input.value.trim();
+  if(!name) return;
+  employees.push({ id:Date.now(), name });
+  input.value = '';
+  input.focus();
+  saveData();
+  render();
+}
+
+function deleteEmployee(id){
+  const hasShifts = shifts.some(s=>s.employeeId===id);
+  const msg = hasShifts
+    ? `Remove ${getEmployeeName(id)} and their scheduled shifts?`
+    : `Remove ${getEmployeeName(id)}?`;
+  if(!confirm(msg)) return;
+  employees = employees.filter(e=>e.id!==id);
+  shifts = shifts.filter(s=>s.employeeId!==id);
+  if(selectedEmployeeId === id) selectedEmployeeId = null;
+  saveData();
+  render();
+}
+
+function addShift(){
+  const start = document.getElementById('shiftStart').value;
+  const end = document.getElementById('shiftEnd').value;
+  const error = document.getElementById('shiftError');
+
+  if(!selectedEmployeeId){
+    error.textContent = employees.length
+      ? 'Select an employee above first.'
+      : 'Add a team member first, then select them here.';
+    error.hidden = false;
+    return;
+  }
+  if(!start || !end){
+    error.textContent = 'Set both a start and end time.';
+    error.hidden = false;
+    return;
+  }
+  error.hidden = true;
+
+  shifts.push({
+    id:Date.now(),
+    employeeId:selectedEmployeeId,
+    start, end,
+    breaks:createBreaks(start, end)
+  });
+
+  saveData();
+  render();
+}
+
+let editingShiftId = null;
+
+function editShift(id){
+  editingShiftId = id;
+  render();
+}
+
+function cancelShiftEdit(){
+  editingShiftId = null;
+  render();
+}
+
+/* Live feedback in the edit panel for both PTO and Drop rows: hides each
+   minutes box when it doesn't apply, and shows the combined working window. */
+function updateOffPreview(){
+  const start = document.getElementById('editStart')?.value;
+  const end = document.getElementById('editEnd')?.value;
+  const el = document.getElementById('offPreview');
+  if(!el) return;
+  el.style.color = '';
+
+  const read = cap => {
+    const when = document.getElementById('edit'+cap+'When').value;
+    const wrap = document.getElementById(cap.toLowerCase()+'MinsWrap');
+    const mins = Math.max(0, Math.round(parseFloat(document.getElementById('edit'+cap+'Mins').value) || 0));
+    if(wrap) wrap.style.display = (when === 'start' || when === 'end') ? 'inline-flex' : 'none';
+    if(!start || !end) return { s:0, e:0 };
+    const total = minutesBetween(start, end);
+    if(when === 'full')  return { s: total, e: 0 };
+    if(when === 'start') return { s: mins, e: 0 };
+    if(when === 'end')   return { s: 0, e: mins };
+    return { s: 0, e: 0 };
+  };
+
+  const pto = read('Pto'), drop = read('Drop');
+  if(!start || !end){ el.textContent = ''; return; }
+  const total = minutesBetween(start, end);
+  const offS = pto.s + drop.s, offE = pto.e + drop.e;
+
+  if(offS + offE === 0){ el.textContent = ''; return; }
+  if(offS + offE > total){ el.textContent = '⚠ off-time exceeds the shift'; el.style.color = 'var(--red)'; return; }
+  if(offS + offE === total){ el.textContent = '→ full shift off'; return; }
+  el.textContent = `→ works ${formatTime(addMinutes(start, offS))} – ${formatTime(addMinutes(start, total - offE))}`;
+}
+
+function saveShiftEdit(id){
+  const start = document.getElementById('editStart').value;
+  const end = document.getElementById('editEnd').value;
+  if(!start || !end || start === end) return;
+
+  const shift = shifts.find(s=>s.id===id);
+  const val = elId => document.getElementById(elId)?.value || '';
+
+  // PTO & Drop from their dropdowns (none / start / end / full) + minutes.
+  const total = minutesBetween(start, end);
+  const readOff = (whenId, minsId) => {
+    const when = val(whenId);
+    const mins = Math.max(0, Math.round(parseFloat(val(minsId)) || 0));
+    if(when === 'full')  return { start: total, end: 0 };
+    if(when === 'start') return { start: mins, end: 0 };
+    if(when === 'end')   return { start: 0, end: mins };
+    return { start: 0, end: 0 };
+  };
+  const pto  = readOff('editPtoWhen',  'editPtoMins');
+  const drop = readOff('editDropWhen', 'editDropMins');
+  if(pto.start + pto.end + drop.start + drop.end > total){
+    showToast('PTO + drop can’t be longer than the shift.');
+    return;
+  }
+  shift.ptoStart = pto.start;   shift.ptoEnd = pto.end;
+  shift.dropStart = drop.start; shift.dropEnd = drop.end;
+
+  // Apply an HH:MM onto an existing timestamp's date (or today if none).
+  const hmOnto = (hm, baseIso) => {
+    const d = baseIso ? new Date(baseIso) : new Date();
+    const [h,m] = hm.split(':').map(Number);
+    d.setHours(h,m,0,0);
+    return d;
+  };
+  // End punches roll to the next day when they read earlier than their start.
+  const endIso = (hm, startIso) => {
+    const d = hmOnto(hm, startIso);
+    if(d <= new Date(startIso)) d.setDate(d.getDate()+1);
+    return d.toISOString();
+  };
+
+  // Clock punches — blanking the in-punch clears the out-punch too.
+  const ciV = val('editClockIn'), coV = val('editClockOut');
+  shift.clockIn  = ciV ? hmOnto(ciV, shift.clockIn).toISOString() : null;
+  shift.clockOut = (shift.clockIn && coV) ? endIso(coV, shift.clockIn) : null;
+
+  // Break punches, keyed by original index. A blanked start returns the
+  // break to its scheduled state; a blanked end makes it active again.
+  shift.breaks.forEach((br,i)=>{
+    if(!document.getElementById('ebS'+i)) return;
+    const sV = val('ebS'+i), eV = val('ebE'+i);
+    if(!sV){
+      br.status = 'scheduled';
+      br.actualStart = null;
+      br.actualEnd = null;
+      return;
+    }
+    br.actualStart = hmOnto(sV, br.actualStart).toISOString();
+    if(eV){
+      br.actualEnd = endIso(eV, br.actualStart);
+      br.status = 'completed';
+    } else {
+      br.actualEnd = null;
+      br.status = 'active';
+    }
+  });
+
+  const old = shift.breaks;
+  shift.start = start;
+  shift.end = end;
+
+  // Re-plan breaks from the rules for the working window, then carry over any
+  // break that already ran (matched by type) so its record isn't lost.
+  const plan = planBreaksFor(start, end, offStartMin(shift), offEndMin(shift));
+  plan.forEach(nb => {
+    const ran = old.find(b => b.type === nb.type && b.status !== 'scheduled');
+    if(ran){
+      nb.status = ran.status;
+      nb.actualStart = ran.actualStart;
+      nb.actualEnd = ran.actualEnd;
+    }
+  });
+  old.filter(b => b.status !== 'scheduled' && !plan.some(nb => nb.type === b.type))
+     .forEach(b => plan.push(b));
+  shift.breaks = plan;
+
+  // Punches define the records — rebuild this shift's history to match.
+  historyLog = historyLog.filter(h => h.shiftId !== id);
+  shift.breaks
+    .filter(b => b.status === 'completed' && b.actualStart && b.actualEnd)
+    .sort((a,b) => new Date(a.actualStart) - new Date(b.actualStart))
+    .forEach(br => historyLog.push(breakHistoryEntry(shift, br)));
+  if(shift.clockIn && shift.clockOut) historyLog.push(shiftHistoryEntry(shift));
+
+  editingShiftId = null;
+  saveData();
+  render();
+}
+
+function deleteShift(id){
+  if(!confirm('Remove this shift?')) return;
+  shifts = shifts.filter(s=>s.id!==id);
+  saveData();
+  render();
+}
+
+function withinShift(shift){
+  const { s, e } = workSpan(shift);   // PTO time is off the clock — no breaks then
+  const n = nowAbs(shift);
+  return n >= s && n <= e;
+}
+
+/* ---------- Break reminders (5 min heads-up) ---------- */
+
+const REMIND_BEFORE = 5;            // minutes before a scheduled break
+let remindersOn = store.getItem('remindersOn') === '1';
+const remindedKeys = new Set();     // one reminder per break per page session
+let audioCtx;
+
+function chime(){
+  try{
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    [[880, 0], [1175, 0.18]].forEach(([freq, at]) => {
+      const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+      o.type = 'sine';
+      o.frequency.value = freq;
+      g.gain.setValueAtTime(0.0001, audioCtx.currentTime + at);
+      g.gain.exponentialRampToValueAtTime(0.5, audioCtx.currentTime + at + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + at + 0.4);
+      o.connect(g);
+      g.connect(audioCtx.destination);
+      o.start(audioCtx.currentTime + at);
+      o.stop(audioCtx.currentTime + at + 0.45);
+    });
+  }catch(e){ /* audio unavailable — toast still shows */ }
+}
+
+function renderBell(){
+  const b = document.getElementById('bellBtn');
+  b.textContent = remindersOn ? '🔔' : '🔕';
+  b.classList.toggle('on', remindersOn);
+}
+
+function toggleReminders(){
+  remindersOn = !remindersOn;
+  store.setItem('remindersOn', remindersOn ? '1' : '');
+  if(remindersOn){
+    chime();  // user gesture unlocks audio for later reminders
+    if('Notification' in window && Notification.permission === 'default'){
+      Notification.requestPermission();
+    }
+    showToast(`Reminders on — you'll get a heads-up ${REMIND_BEFORE} minutes before each break.`);
+  } else {
+    showToast('Break reminders off.');
+  }
+  renderBell();
+}
+
+/* Tab badge — a red dot on the favicon + count in the title, so a reminder
+   that fires while you're on another tab is still visible. Clears when the
+   tab regains focus. */
+const faviconEl = document.getElementById('favicon');
+const FAVI_MUG = `<rect width='32' height='32' rx='8' fill='url(#g)'/><g fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><path d='M7 13h13v8a5 5 0 0 1-5 5h-3a5 5 0 0 1-5-5v-8z'/><path d='M20 14.5h2.5a3 3 0 0 1 0 6H20'/><path d='M11.5 9.5c0-1.2 1-1.2 1-2.5'/><path d='M16 9.5c0-1.2 1-1.2 1-2.5'/></g>`;
+const FAVI_DEFS = `<defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='#4f46e5'/><stop offset='1' stop-color='#818cf8'/></linearGradient></defs>`;
+const faviconURI = withDot => 'data:image/svg+xml,' + encodeURIComponent(
+  `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'>${FAVI_DEFS}${FAVI_MUG}` +
+  (withDot ? `<circle cx='25' cy='7' r='6.5' fill='#ef4444' stroke='white' stroke-width='2'/>` : '') +
+  `</svg>`);
+
+let pendingAlerts = 0;
+function setTabAlert(){
+  if(faviconEl) faviconEl.href = faviconURI(pendingAlerts > 0);
+  document.title = pendingAlerts ? `🔴 (${pendingAlerts}) Break Tracker` : 'Break Tracker';
+}
+
+document.addEventListener('visibilitychange', () => {
+  if(!document.hidden && pendingAlerts){ pendingAlerts = 0; setTabAlert(); }
+});
+
+function checkBreakReminders(){
+  if(!remindersOn) return;
+  shifts.forEach(shift => shift.breaks.forEach((br, i) => {
+    if(br.status !== 'scheduled') return;
+    const diff = breakAbs(br, shift) - nowAbs(shift);
+    const key = shift.id + ':' + i;
+    if(diff > 0 && diff <= REMIND_BEFORE && !remindedKeys.has(key)){
+      remindedKeys.add(key);
+      const msg = `${getEmployeeName(shift.employeeId)} — ${br.type} at ${formatTime(br.scheduled)} (in ${Math.ceil(diff)} min)`;
+      showToast('🔔 ' + msg);
+      chime();
+      if('Notification' in window && Notification.permission === 'granted'){
+        new Notification('Break coming up', { body: msg });
+      }
+      if(document.hidden){ pendingAlerts++; setTabAlert(); }   // badge the tab while away
+    }
+  }));
+}
+
+let toastTimer;
+function hideToast(){
+  const t = document.getElementById('toast');
+  if(t) t.style.display = 'none';
+}
+function showToast(msg){
+  let t = document.getElementById('toast');
+  if(!t){
+    t = document.createElement('div');
+    t.id = 'toast';
+    t.className = 'toast';
+    document.body.appendChild(t);
+  }
+  t.innerHTML = `<span class="toast-msg"></span><button class="toast-x" onclick="hideToast()" title="Dismiss">✕</button>`;
+  t.querySelector('.toast-msg').textContent = msg;
+  t.style.display = 'flex';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(hideToast, 10000);
+}
+
+function startBreak(shiftId, index){
+  const shift = shifts.find(s=>s.id===shiftId);
+  if(!withinShift(shift)){
+    showToast(`Breaks can only be taken during the shift (${formatTime(shift.start)} – ${formatTime(shift.end)}).`);
+    return;
+  }
+  shift.breaks[index].status = 'active';
+  shift.breaks[index].actualStart = new Date().toISOString();
+  saveData();
+  render();
+}
+
+const CLOCK_GRACE = 5;  // minutes either side of shift start/end that count as on time
+
+const fmtIso = iso => new Date(iso).toLocaleTimeString([], {hour:'numeric', minute:'2-digit'});
+
+function clockStatus(iso, schedMin, shift, dir){
+  const d = new Date(iso);
+  const m = anchorMin(d.getHours()*60 + d.getMinutes() + d.getSeconds()/60, shift);
+  const diff = m - schedMin;
+  const mag = Math.abs(diff);
+  const early = diff < 0;
+  if(mag < 1) return { color:'ok', label:'on time' };
+  if(mag <= CLOCK_GRACE) return { color:'ok', label:`grace period · ${fmtDur(mag)} ${early ? 'early' : 'late'}` };
+  const harmful = dir === 'in' ? !early : early;   // late in, early out
+  return { color: harmful ? 'bad' : 'warn', label:`${fmtDur(mag)} ${early ? 'early' : 'late'}` };
+}
+
+function clockIn(shiftId){
+  const shift = shifts.find(s=>s.id===shiftId);
+  if(shift.clockIn) return;
+  shift.clockIn = new Date().toISOString();
+  const cs = clockStatus(shift.clockIn, workSpan(shift).s, shift, 'in');
+  saveData();
+  render();
+  showToast(`${getEmployeeName(shift.employeeId)} clocked in at ${fmtIso(shift.clockIn)} — ${cs.label}.`);
+}
+
+function breakHistoryEntry(shift, br){
+  const duration = Math.round((new Date(br.actualEnd) - new Date(br.actualStart)) / 60000);
+  return {
+    shiftId:shift.id,
+    employee:getEmployeeName(shift.employeeId),
+    type:br.type,
+    start:fmtIso(br.actualStart),
+    end:fmtIso(br.actualEnd),
+    duration:duration + ' min',
+    durationMins:duration,
+    expected:br.expected
+  };
+}
+
+function shiftHistoryEntry(shift){
+  const worked = Math.round((new Date(shift.clockOut) - new Date(shift.clockIn)) / 60000);
+  const { s, e } = workSpan(shift);
+  return {
+    shiftId:shift.id,
+    employee:getEmployeeName(shift.employeeId),
+    type:'Shift',
+    start:fmtIso(shift.clockIn),
+    end:fmtIso(shift.clockOut),
+    duration:fmtDur(worked),
+    durationMins:worked,
+    expected:workMinutes(shift),   // expected working time (shift minus all off)
+    inStatus:clockStatus(shift.clockIn, s, shift, 'in').label,
+    outStatus:clockStatus(shift.clockOut, e, shift, 'out').label,
+    ptoNote: offSummary(shift)
+  };
+}
+
+function clockOut(shiftId){
+  const shift = shifts.find(s=>s.id===shiftId);
+  if(!shift.clockIn || shift.clockOut) return;
+  shift.clockOut = new Date().toISOString();
+  historyLog.push(shiftHistoryEntry(shift));
+
+  const cs = clockStatus(shift.clockOut, workSpan(shift).e, shift, 'out');
+  saveData();
+  render();
+  showToast(`${getEmployeeName(shift.employeeId)} clocked out at ${fmtIso(shift.clockOut)} — ${cs.label}.`);
+}
+
+function addUnscheduledBreak(shiftId){
+  const shift = shifts.find(s=>s.id===shiftId);
+  if(!withinShift(shift)){
+    showToast('Unscheduled breaks can only be logged while the shift is running.');
+    return;
+  }
+  const now = new Date();
+  shift.breaks.push({
+    type:'Unscheduled',
+    scheduled:`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`,
+    expected:0,
+    status:'active',
+    actualStart:now.toISOString(),
+    actualEnd:null
+  });
+  saveData();
+  render();
+  showToast(`Unscheduled break logged for ${getEmployeeName(shift.employeeId)} at ${now.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'})}.`);
+}
+
+function endBreak(shiftId, index){
+  const shift = shifts.find(s=>s.id===shiftId);
+  const br = shift.breaks[index];
+  br.status = 'completed';
+  br.actualEnd = new Date().toISOString();
+
+  historyLog.push(breakHistoryEntry(shift, br));
+
+  saveData();
+  render();
+}
+
+function startNewDay(){
+  if(!shifts.length && !historyLog.length){
+    showToast('Nothing to clear — already a fresh day.');
+    return;
+  }
+  const exportNote = historyLog.length ? '\n\nTip: export the Break History (CSV/Excel) first if you need it for records.' : '';
+  if(!confirm('Start a new day?\n\nThis removes all shifts and the break history. Your employees are kept for scheduling.' + exportNote)) return;
+  shifts = [];
+  historyLog = [];
+  editingShiftId = null;
+  openHist.clear();
+  remindedKeys.clear();
+  saveData();
+  render();
+  showToast('New day started — roster kept, schedule and history cleared.');
+}
+
+/* ---------- History export ---------- */
+
+/* Same grouping the Break History card uses: entries bundled per employee,
+   in the order they were logged. */
+function groupedHistory(){
+  const byEmployee = {};
+  historyLog.forEach(h => {
+    (byEmployee[h.employee] = byEmployee[h.employee] || []).push(h);
+  });
+  return Object.entries(byEmployee);
+}
+
+function entryStatus(h){
+  const mins = h.durationMins ?? parseInt(h.duration);
+
+  if(h.type === 'Shift'){
+    if(isNaN(mins) || h.expected == null) return { label:'shift record', color:'#eef2ff' };
+    const d = mins - h.expected;
+    if(Math.abs(d) <= CLOCK_GRACE) return { label:'worked as scheduled', color:'#dcfce7' };
+    return d < 0
+      ? { label:`worked ${-d} min short`, color:'#fee2e2' }
+      : { label:`worked +${d} min`, color:'#fffbeb' };
+  }
+
+  if(h.type === 'Unscheduled'){
+    return { label:`unscheduled${isNaN(mins) ? '' : ' · '+mins+' min'}`, color:'#f3e8ff' };
+  }
+
+  if(h.expected == null || isNaN(mins)) return { label:'', color:'' };
+  return mins <= h.expected
+    ? { label:'within expected', color:'#dcfce7' }
+    : { label:`+${mins - h.expected} min over`, color:'#fee2e2' };
+}
+
+function downloadFile(name, mime, content){
+  const blob = new Blob([content], { type:mime });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+const EXPORT_COLS = ['Employee','Type','Start','End','Duration (min)','Expected (min)','Status'];
+
+function exportRow(h){
+  const mins = h.durationMins ?? parseInt(h.duration);
+  let status = entryStatus(h).label;
+  if(h.ptoNote)   status += ` · ${h.ptoNote}`;
+  if(h.inStatus)  status += ` · in: ${h.inStatus}`;
+  if(h.outStatus) status += ` · out: ${h.outStatus}`;
+  return [
+    h.employee, h.type, h.start, h.end,
+    isNaN(mins) ? (h.duration || '') : mins,
+    h.expected ?? '',
+    status
+  ];
+}
+
+function exportHistoryCSV(){
+  if(!historyLog.length){ showToast('No history to export yet.'); return; }
+  const cell = v => `"${String(v ?? '').replace(/"/g,'""')}"`;
+  const lines = [EXPORT_COLS.map(cell).join(',')]
+    .concat(groupedHistory().flatMap(([, entries]) => entries)
+      .map(h => exportRow(h).map(cell).join(',')));
+  downloadFile(`break-history-${new Date().toISOString().slice(0,10)}.csv`,
+    'text/csv;charset=utf-8', '﻿' + lines.join('\r\n'));
+  showToast('CSV exported.');
+}
+
+/* Minimal real-XLSX writer (zip of OpenXML parts, stored uncompressed).
+   No libraries — produces a file Numbers, Excel and LibreOffice all open
+   natively, with the color-coded cells. */
+const CRC_TABLE = (() => {
+  const t = new Uint32Array(256);
+  for(let n=0; n<256; n++){
+    let c = n;
+    for(let k=0; k<8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1;
+    t[n] = c;
+  }
+  return t;
+})();
+
+function crc32(bytes){
+  let c = 0xFFFFFFFF;
+  for(let i=0; i<bytes.length; i++) c = CRC_TABLE[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+
+function makeZip(files){
+  const enc = new TextEncoder();
+  const parts = [], central = [];
+  let offset = 0;
+
+  files.forEach(f => {
+    const name = enc.encode(f.name), data = enc.encode(f.text);
+    const crc = crc32(data);
+
+    const lh = new DataView(new ArrayBuffer(30));
+    lh.setUint32(0, 0x04034b50, true);
+    lh.setUint16(4, 20, true);
+    lh.setUint32(14, crc, true);
+    lh.setUint32(18, data.length, true);
+    lh.setUint32(22, data.length, true);
+    lh.setUint16(26, name.length, true);
+    parts.push(new Uint8Array(lh.buffer), name, data);
+
+    const ce = new DataView(new ArrayBuffer(46));
+    ce.setUint32(0, 0x02014b50, true);
+    ce.setUint16(4, 20, true);
+    ce.setUint16(6, 20, true);
+    ce.setUint32(16, crc, true);
+    ce.setUint32(20, data.length, true);
+    ce.setUint32(24, data.length, true);
+    ce.setUint16(28, name.length, true);
+    ce.setUint32(42, offset, true);
+    central.push(new Uint8Array(ce.buffer), name);
+
+    offset += 30 + name.length + data.length;
+  });
+
+  const centralSize = central.reduce((s,a)=>s+a.length, 0);
+  const eocd = new DataView(new ArrayBuffer(22));
+  eocd.setUint32(0, 0x06054b50, true);
+  eocd.setUint16(8, files.length, true);
+  eocd.setUint16(10, files.length, true);
+  eocd.setUint32(12, centralSize, true);
+  eocd.setUint32(16, offset, true);
+
+  const all = [...parts, ...central, new Uint8Array(eocd.buffer)];
+  const out = new Uint8Array(all.reduce((s,a)=>s+a.length, 0));
+  let p = 0;
+  all.forEach(a => { out.set(a, p); p += a.length; });
+  return out;
+}
+
+function exportHistoryExcel(){
+  if(!historyLog.length){ showToast('No history to export yet.'); return; }
+
+  const xmlEsc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  // style ids: 0 plain · 1 header · 2 green · 3 red · 4 purple · 5 amber · 6 indigo
+  const styleOf = h => ({'#dcfce7':2, '#fee2e2':3, '#f3e8ff':4, '#fffbeb':5, '#eef2ff':6}[entryStatus(h).color] || 0);
+
+  const cellXml = (v, col, row, s) => {
+    const ref = String.fromCharCode(65+col) + row;
+    if(typeof v === 'number' && isFinite(v)) return `<c r="${ref}" s="${s}"><v>${v}</v></c>`;
+    return `<c r="${ref}" s="${s}" t="inlineStr"><is><t>${xmlEsc(v)}</t></is></c>`;
+  };
+
+  let rowsXml = `<row r="1">${EXPORT_COLS.map((c,i)=>cellXml(c,i,1,1)).join('')}</row>`;
+  groupedHistory().flatMap(([, entries]) => entries).forEach((h,i)=>{
+    const s = styleOf(h), r = i+2;
+    rowsXml += `<row r="${r}">${exportRow(h).map((v,ci)=>cellXml(v,ci,r,s)).join('')}</row>`;
+  });
+
+  const sheet = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><cols>${[22,14,12,12,14,14,24].map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join('')}</cols><sheetData>${rowsXml}</sheetData></worksheet>`;
+
+  const styles = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="12"/><name val="Calibri"/></font><font><b/><sz val="12"/><name val="Calibri"/></font></fonts><fills count="7"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>${['DCFCE7','FEE2E2','F3E8FF','FFFBEB','EEF2FF'].map(c=>`<fill><patternFill patternType="solid"><fgColor rgb="FF${c}"/><bgColor indexed="64"/></patternFill></fill>`).join('')}</fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="7"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="6" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="0" fontId="0" fillId="2" borderId="0" xfId="0" applyFill="1"/><xf numFmtId="0" fontId="0" fillId="3" borderId="0" xfId="0" applyFill="1"/><xf numFmtId="0" fontId="0" fillId="4" borderId="0" xfId="0" applyFill="1"/><xf numFmtId="0" fontId="0" fillId="5" borderId="0" xfId="0" applyFill="1"/><xf numFmtId="0" fontId="0" fillId="6" borderId="0" xfId="0" applyFill="1"/></cellXfs></styleSheet>`;
+
+  const workbook = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Break History" sheetId="1" r:id="rId1"/></sheets></workbook>`;
+
+  const wbRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`;
+
+  const rootRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`;
+
+  const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`;
+
+  const zip = makeZip([
+    {name:'[Content_Types].xml', text:contentTypes},
+    {name:'_rels/.rels', text:rootRels},
+    {name:'xl/workbook.xml', text:workbook},
+    {name:'xl/_rels/workbook.xml.rels', text:wbRels},
+    {name:'xl/styles.xml', text:styles},
+    {name:'xl/worksheets/sheet1.xml', text:sheet}
+  ]);
+
+  downloadFile(`break-history-${new Date().toISOString().slice(0,10)}.xlsx`,
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', zip);
+  showToast('Excel file exported — colors included.');
+}
+
+function clearHistory(){
+  if(!historyLog.length) return;
+  if(!confirm('Clear all break history?')) return;
+  historyLog = [];
+  saveData();
+  render();
+}
+
+/* ---------- Break state ---------- */
+
+function breakState(br, shift){
+  if(br.status==='completed') return { key:'done', label:'Completed' };
+  if(br.status==='active')    return { key:'active', label:'On break' };
+
+  const diff = breakAbs(br, shift) - nowAbs(shift);
+  if(diff <= 0)  return { key:'overdue',  label:`Overdue ${fmtDur(-diff)}` };
+  if(diff <= 15) return { key:'soon',     label:`In ${fmtDur(diff)}` };
+  if(diff <= 30) return { key:'upcoming', label:`In ${fmtDur(diff)}` };
+  return { key:'later', label:'Scheduled' };
+}
+
+/* ---------- Rendering ---------- */
+
+function renderClock(){
+  const now = new Date();
+  document.getElementById('clockTime').textContent =
+    now.toLocaleTimeString([], {hour:'numeric', minute:'2-digit', second:'2-digit'});
+  document.getElementById('clockDate').textContent =
+    now.toLocaleDateString([], {weekday:'long', month:'long', day:'numeric'});
+}
+
+function renderStats(){
+  const active = [], dueSoon = [], overdue = [];
+
+  shifts.forEach(s => s.breaks.forEach(b => {
+    const st = breakState(b, s);
+    const nm = getEmployeeName(s.employeeId);
+    if(st.key === 'active'){
+      const mins = Math.max(1, Math.floor((Date.now() - new Date(b.actualStart)) / 60000));
+      active.push(`${nm} — ${b.type}, ${fmtDur(mins)} so far`);
+    } else if(['soon','upcoming'].includes(st.key)){
+      dueSoon.push(`${nm} — ${b.type} at ${formatTime(b.scheduled)} (${st.label.toLowerCase()})`);
+    } else if(st.key === 'overdue'){
+      overdue.push(`${nm} — ${b.type} (${st.label.toLowerCase()}, was ${formatTime(b.scheduled)})`);
+    }
+  }));
+
+  const scheduledIds = new Set(shifts.map(s => s.employeeId));
+  const teamTip = employees.length
+    ? employees.map(e => `${e.name}${scheduledIds.has(e.id) ? ' · scheduled today' : ' · no shift today'}`).join('\n')
+    : 'No employees yet — add them in the Team panel';
+
+  const tip = (lines, empty) => lines.length ? lines.join('\n') : empty;
+
+  const cards = [
+    { icon:'👥', bg:'var(--accent-soft)', label:'Team members', num:employees.length, tip:teamTip },
+    { icon:'☕', bg:'var(--blue-soft)',   label:'On break now',  num:active.length,
+      tip:tip(active, 'No one is on a break right now') },
+    { icon:'⏰', bg:'var(--amber-soft)',  label:'Due in 30 min', num:dueSoon.length,
+      tip:tip(dueSoon, 'No breaks due in the next 30 minutes') },
+    { icon:'⚠️', bg:'var(--red-soft)',    label:'Overdue',       num:overdue.length,
+      tip:tip(overdue, 'No overdue breaks') }
+  ];
+
+  // Build the cards once; afterwards only mutate numbers and tooltips in
+  // place — replacing the nodes every second kills native title tooltips.
+  const wrap = document.getElementById('stats');
+  let els = wrap.querySelectorAll('.stat');
+  if(els.length !== cards.length){
+    wrap.innerHTML = cards.map(c => `
+      <div class="stat">
+        <div class="stat-icon" style="background:${c.bg}">${c.icon}</div>
+        <div>
+          <div class="stat-num"></div>
+          <div class="stat-label">${c.label}</div>
+        </div>
+      </div>`).join('');
+    els = wrap.querySelectorAll('.stat');
+  }
+  els.forEach((el, i) => {
+    el.title = cards[i].tip;
+    el.querySelector('.stat-num').textContent = cards[i].num;
+  });
+}
+
+function renderEmployees(){
+  const list = document.getElementById('employeeList');
+
+  list.innerHTML = employees.length
+    ? employees.map(e=>`
+        <span class="pill">
+          <span class="avatar" style="background:${avatarColor(e.name)}">${esc(initials(e.name))}</span>
+          ${esc(e.name)}
+          <button class="pill-x" onclick="deleteEmployee(${e.id})" title="Remove">×</button>
+        </span>`).join('')
+    : `<div class="empty" style="width:100%"><span class="empty-icon">👋</span>No employees yet</div>`;
+
+  document.getElementById('employeeChips').innerHTML = employees.length
+    ? employees.map(e=>`
+        <button type="button"
+                class="chip${e.id===selectedEmployeeId ? ' selected' : ''}"
+                onclick="selectEmployee(${e.id})">${esc(e.name)}</button>`).join('')
+    : `<span class="hint" style="margin:0">Add a team member first.</span>`;
+}
+
+let ganttMode = store.getItem('ganttMode') || 'shift';   // 'shift' | 'employee'
+
+function setGanttMode(mode){
+  ganttMode = mode;
+  store.setItem('ganttMode', mode);
+  document.getElementById('gm-shift').classList.toggle('active', mode === 'shift');
+  document.getElementById('gm-emp').classList.toggle('active', mode === 'employee');
+  renderGantt();
+}
+
+function renderGantt(){
+  const el = document.getElementById('gantt');
+
+  if(!shifts.length){
+    el.innerHTML = `<div class="empty"><span class="empty-icon">📊</span>The timeline appears once shifts are scheduled.</div>`;
+    return;
+  }
+
+  const spans = shifts.map(s => {
+    const { s:start, e:end } = shiftSpan(s);
+    return { shift:s, start, end };
+  }).sort((a,b) => a.start - b.start || a.shift.id - b.shift.id);  // earliest start on top
+
+  // Fixed midnight-to-midnight frame, extended only when an overnight
+  // shift runs past 24:00 so its tail is never clipped.
+  const axisStart = 0;
+  const axisEnd = Math.max(1440, Math.ceil(Math.max(...spans.map(s=>s.end))/60)*60);
+  const range = Math.max(axisEnd - axisStart, 60);
+
+  const pos = m => (m - axisStart) / range * 100;
+
+  // Every hour, 24-hour numbering: 0 1 2 … 12 13 … 23.
+  const fmtHour = m => String(Math.floor(m/60) % 24);
+
+  let lines = '', labels = '';
+  for(let m = axisStart; m <= axisEnd; m += 60){
+    lines  += `<div class="g-line" style="left:${pos(m).toFixed(2)}%"></div>`;
+    labels += `<div class="g-hour" style="left:${pos(m).toFixed(2)}%">${fmtHour(m)}</div>`;
+  }
+
+  const now = new Date();
+  let nowMin = now.getHours()*60 + now.getMinutes() + now.getSeconds()/60;
+  if(nowMin < axisStart && nowMin + 1440 <= axisEnd) nowMin += 1440;  // axis runs past midnight
+  const nowLine = (nowMin >= axisStart && nowMin <= axisEnd)
+    ? `<div class="g-now" style="left:${pos(nowMin).toFixed(2)}%"></div>` : '';
+
+  // Everything that goes INSIDE one shift's g-track (bar + off-time + breaks + clock marks)
+  const trackContent = (shift, start, end) => {
+    const name = getEmployeeName(shift.employeeId);
+
+    const blocks = shift.breaks.map(br=>{
+      const st = breakState(br, shift);
+
+      // Planned position by default; once a break ran, draw it where it
+      // actually happened — even outside the scheduled slot — so the
+      // chart reflects reality.
+      let bs = breakAbs(br, shift), bw = br.expected, offNote = '';
+      if(br.actualStart){
+        const d = new Date(br.actualStart);
+        bs = anchorMin(d.getHours()*60 + d.getMinutes(), shift);
+        bw = br.actualEnd
+          ? Math.max(1, Math.round((new Date(br.actualEnd) - d) / 60000))
+          : Math.max(1, (Date.now() - d) / 60000);
+        offNote = ` · taken ${d.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'})}`;
+      }
+
+      const l = Math.max(pos(bs), 0);
+      const r = Math.min(pos(bs + bw), 100);
+      if(r <= 0 || l >= 100) return '';
+      const w = Math.max(r - l, 0.4);
+      const isUn = br.type === 'Unscheduled';
+      return `<div class="g-break ${st.key}${isUn?' unsched':''}"
+                   style="left:${l.toFixed(2)}%;width:${w.toFixed(2)}%"
+                   title="${esc(name)} · ${esc(br.type)} · ${formatTime(br.scheduled)} · ${isUn?'unplanned':br.expected+' min'} · ${st.label}${offNote}"></div>`;
+    }).join('');
+
+    const ws = workSpan(shift);
+
+    const ptoMarks = offBlocks(shift).map(b => {
+      const k = OFF_KINDS[b.kind];
+      const l = pos(b.from), w = pos(b.to) - l;
+      return `<div class="g-${k.cls}" style="left:${l.toFixed(2)}%;width:${w.toFixed(2)}%"
+                   title="${esc(name)} · ${k.word} ${fmtDur(b.mins)} (${b.edge} of shift)"></div>`;
+    }).join('');
+
+    let clockMarks = '';
+    [['clockIn', ws.s, 'in', 'Clock-in'], ['clockOut', ws.e, 'out', 'Clock-out']].forEach(([field, sched, dir, lbl])=>{
+      const iso = shift[field];
+      if(!iso) return;
+      const d = new Date(iso);
+      const m = anchorMin(d.getHours()*60 + d.getMinutes(), shift);
+      const cs = clockStatus(iso, sched, shift, dir);
+      const p = Math.min(Math.max(pos(m), 0), 100);
+      clockMarks += `<div class="g-clock ${cs.color}" style="left:${p.toFixed(2)}%"
+                          title="${esc(name)} · ${lbl} ${fmtIso(iso)} · ${cs.label}"></div>`;
+    });
+
+    const ptoTip = offSummary(shift) ? ` · ${offSummary(shift)}` : '';
+    const sl = pos(start), sw = pos(end) - sl;
+    return `
+      <div class="g-shift" style="left:${sl.toFixed(2)}%;width:${sw.toFixed(2)}%"
+           title="${esc(name)} · ${formatTime(shift.start)} – ${formatTime(shift.end)} · ${fmtDur(end - start)}${ptoTip}"></div>
+      ${ptoMarks}${blocks}${clockMarks}`;
+  };
+
+  const row = (idx, label, inner) =>
+    `<div class="g-row"><div class="g-label" title="${esc(label)}"><span class="g-idx">${idx}</span>${esc(label)}</div><div class="g-track">${inner}</div></div>`;
+
+  let rows;
+  if(ganttMode === 'employee'){
+    // one lane per employee, all their shifts drawn on it; earliest-start employee on top
+    const byEmp = new Map();
+    spans.forEach(sp => {
+      if(!byEmp.has(sp.shift.employeeId)) byEmp.set(sp.shift.employeeId, []);
+      byEmp.get(sp.shift.employeeId).push(sp);
+    });
+    rows = [...byEmp.values()]
+      .sort((a,b) => Math.min(...a.map(x=>x.start)) - Math.min(...b.map(x=>x.start)))
+      .map((group, i) => row(
+        i + 1,
+        getEmployeeName(group[0].shift.employeeId),
+        group.map(sp => trackContent(sp.shift, sp.start, sp.end)).join('')
+      )).join('');
+  } else {
+    // one lane per shift (default), already sorted by start
+    rows = spans.map((sp, i) => row(i + 1, getEmployeeName(sp.shift.employeeId), trackContent(sp.shift, sp.start, sp.end))).join('');
+  }
+
+  el.innerHTML = `
+    <div class="g-chart">
+      <div class="g-gridwrap">${lines}</div>
+      <div class="g-nowwrap">${nowLine}</div>
+      <div class="g-axis">${labels}</div>
+      ${rows}
+    </div>
+    <div class="g-legend">
+      <span><i style="background:var(--accent-soft);border:1px solid #d8defb"></i>Shift</span>
+      <span><i style="background:#94a3b8"></i>Scheduled</span>
+      <span><i style="background:var(--amber)"></i>Due ≤30m</span>
+      <span><i style="background:var(--orange)"></i>Due ≤15m</span>
+      <span><i style="background:var(--red)"></i>Overdue</span>
+      <span><i style="background:var(--blue)"></i>On break</span>
+      <span><i style="background:var(--green)"></i>Done</span>
+      <span><i style="background:#a855f7"></i>Unscheduled</span>
+      <span><i class="leg-pto"></i>PTO</span>
+      <span><i class="leg-drop"></i>Drop</span>
+    </div>`;
+}
+
+function renderDashboard(){
+  const dashboard = document.getElementById('dashboard');
+
+  // keep horizontal scroll positions of the break ribbons across re-renders
+  const scrollPos = [...dashboard.querySelectorAll('.shift-breaks')].map(el => el.scrollLeft);
+
+  if(!shifts.length){
+    dashboard.innerHTML = `
+      <div class="empty">
+        <span class="empty-icon">🗓️</span>
+        No shifts scheduled.<br>Add an employee and schedule a shift to get started.
+      </div>`;
+    return;
+  }
+
+  const ordered = [...shifts].sort((a,b) => shiftSpan(a).s - shiftSpan(b).s || a.id - b.id);
+  dashboard.innerHTML = ordered.map(shift=>{
+    const name = getEmployeeName(shift.employeeId);
+
+    if(shift.id === editingShiftId){
+      const toHM = iso => {
+        const d = new Date(iso);
+        return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+      };
+
+      // off-time editor rows (PTO gray, Drop red) share one builder
+      const total = minutesBetween(shift.start, shift.end);
+      const offRow = (cap, label) => {
+        const sM = shift[cap.toLowerCase()+'Start'] || 0, eM = shift[cap.toLowerCase()+'End'] || 0;
+        const full = sM >= total && sM > 0;
+        return `
+            <div class="ef-row">
+              <span class="ef-label">${label}</span>
+              <select id="edit${cap}When" onchange="updateOffPreview()" style="width:auto">
+                <option value="none" ${!sM && !eM ? 'selected' : ''}>none</option>
+                <option value="start" ${sM && !full ? 'selected' : ''}>start of shift</option>
+                <option value="end" ${eM && !full ? 'selected' : ''}>end of shift</option>
+                <option value="full" ${full ? 'selected' : ''}>full shift</option>
+              </select>
+              <span id="${cap.toLowerCase()}MinsWrap" style="display:none;align-items:center;gap:8px">
+                <input type="number" id="edit${cap}Mins" min="0" step="15" placeholder="min"
+                       value="${full ? '' : (sM || eM || '')}" style="width:74px"
+                       oninput="updateOffPreview()">
+                <span class="ef-dash">min</span>
+              </span>
+            </div>`;
+      };
+
+      const punchRows = shift.breaks.map((br,i)=>{
+        if(br.status === 'scheduled') return '';
+        return `
+          <div class="ef-row">
+            <span class="ef-label">${esc(br.type)}</span>
+            <input type="time" id="ebS${i}" value="${toHM(br.actualStart)}">
+            <span class="ef-dash">–</span>
+            <input type="time" id="ebE${i}" value="${br.actualEnd ? toHM(br.actualEnd) : ''}">
+          </div>`;
+      }).join('');
+
+      return `
+        <div class="shift-row">
+          <div class="shift-who">
+            <span class="avatar" style="background:${avatarColor(name)}">${esc(initials(name))}</span>
+            <div style="min-width:0">
+              <div class="shift-name">${esc(name)}</div>
+              <div class="shift-time">editing shift…</div>
+            </div>
+          </div>
+          <div class="edit-panel">
+            <div class="ef-row">
+              <span class="ef-label">Shift</span>
+              <input type="time" id="editStart" value="${shift.start}">
+              <span class="ef-dash">–</span>
+              <input type="time" id="editEnd" value="${shift.end}">
+            </div>
+            <div class="ef-row">
+              <span class="ef-label">Clock in/out</span>
+              <input type="time" id="editClockIn" value="${shift.clockIn ? toHM(shift.clockIn) : ''}">
+              <span class="ef-dash">–</span>
+              <input type="time" id="editClockOut" value="${shift.clockOut ? toHM(shift.clockOut) : ''}">
+            </div>
+            ${offRow('Pto', 'PTO')}
+            ${offRow('Drop', 'Shift drop')}
+            <div class="ef-row">
+              <span class="ef-label"></span>
+              <span class="ef-hint" id="offPreview" style="margin-left:0"></span>
+            </div>
+            ${punchRows}
+            <div class="ef-row">
+              <button class="btn-xs btn-start" onclick="saveShiftEdit(${shift.id})">Save</button>
+              <button class="btn-ghost btn-sm" onclick="cancelShiftEdit()">Cancel</button>
+              <span class="ef-hint">clear a time to remove that punch</span>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    if(isFullOff(shift)){
+      const k = OFF_KINDS[fullOffKind(shift)];
+      return `
+        <div class="shift-row">
+          <div class="shift-who">
+            <span class="avatar" style="background:${avatarColor(name)}">${esc(initials(name))}</span>
+            <div style="min-width:0">
+              <div class="shift-name">${esc(name)}</div>
+              <div class="shift-time">${formatTime(shift.start)} – ${formatTime(shift.end)}</div>
+            </div>
+          </div>
+          <div class="shift-main">
+            <div class="pto-full ${k.cls}">${k.emoji} Full-shift ${k.word}</div>
+            <div class="shift-actions">
+              <button class="btn-ghost btn-sm" onclick="editShift(${shift.id})" title="Edit shift times">✎</button>
+              <button class="btn-ghost btn-sm" onclick="deleteShift(${shift.id})" title="Remove shift">✕</button>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    const { s, e } = workSpan(shift);   // progress & clock grace track working hours
+    const pct = Math.max(0, Math.min(100, (nowAbs(shift) - s) / (e - s) * 100));
+    const off = offSummary(shift);
+
+    const cells = shift.breaks.map((br,index)=>{
+      const st = breakState(br, shift);
+      const isUn = br.type === 'Unscheduled';
+
+      let timer = '';
+      if(br.status==='active'){
+        const secs = Math.floor((Date.now() - new Date(br.actualStart)) / 1000);
+        const over = secs > br.expected*60;
+        timer = `<span class="timer${over?' over':''}">${Math.floor(secs/60)}:${String(secs%60).padStart(2,'0')}</span>`;
+      }
+
+      const action =
+        br.status==='scheduled' ? (withinShift(shift)
+          ? `<button class="btn-xs btn-start" onclick="startBreak(${shift.id},${index})">Start</button>`
+          : `<button class="btn-xs btn-start" disabled title="Breaks can only be taken during the shift">Start</button>`) :
+        br.status==='active'    ? `<button class="btn-xs btn-end" onclick="endBreak(${shift.id},${index})">End</button>` : '';
+
+      return `
+        <div class="break-cell ${st.key}${isUn?' unsched':''}" title="${esc(br.type)} · ${formatTime(br.scheduled)} · ${isUn?'unplanned':br.expected+' min'}">
+          <span class="dot"></span>
+          <span class="bc-label">${esc(br.type)}</span>
+          <span class="bc-time">${formatTime(br.scheduled)}</span>
+          ${timer}
+          <span class="bc-status">${st.label}</span>
+          ${action}
+        </div>`;
+    }).join('');
+
+    // PTO (gray) & Drop (red) shown as striped chips bracketing the breaks
+    const offChip = b => {
+      const k = OFF_KINDS[b.kind];
+      const from = formatTime(minToHM(b.from)), to = formatTime(minToHM(b.to));
+      return `
+        <div class="break-cell ${k.cls}" title="${k.word} ${fmtDur(b.mins)} · ${from} – ${to}">
+          <span class="dot"></span>
+          <span class="bc-label">${k.emoji} ${k.word}</span>
+          <span class="bc-time">${from} – ${to}</span>
+          <span class="bc-status">${fmtDur(b.mins)}</span>
+        </div>`;
+    };
+    const blocksList = offBlocks(shift);
+    const offStartCells = blocksList.filter(b => b.edge === 'start').map(offChip).join('');
+    const offEndCells   = blocksList.filter(b => b.edge === 'end').map(offChip).join('');
+
+    let stamps = '';
+    if(shift.clockIn){
+      const cs = clockStatus(shift.clockIn, s, shift, 'in');
+      stamps += `<span class="stamp ${cs.color}">In ${fmtIso(shift.clockIn)} · ${cs.label}</span>`;
+    }
+    if(shift.clockOut){
+      const cs = clockStatus(shift.clockOut, e, shift, 'out');
+      stamps += `<span class="stamp ${cs.color}">Out ${fmtIso(shift.clockOut)} · ${cs.label}</span>`;
+    }
+
+    const clockBtn = !shift.clockIn
+      ? `<button class="btn-xs btn-start" onclick="clockIn(${shift.id})">Clock In</button>`
+      : !shift.clockOut
+        ? `<button class="btn-xs btn-end" onclick="clockOut(${shift.id})">Clock Out</button>`
+        : '';
+
+    return `
+      <div class="shift-row">
+        <div class="shift-who">
+          <span class="avatar" style="background:${avatarColor(name)}">${esc(initials(name))}</span>
+          <div style="min-width:0">
+            <div class="shift-name">${esc(name)}</div>
+            <div class="shift-time">${formatTime(shift.start)} – ${formatTime(shift.end)}</div>
+            ${off ? `<div class="pto-badge" title="Working hours ${formatTime(minToHM(s))} – ${formatTime(minToHM(e))}">${esc(off)}</div>` : ''}
+            ${stamps ? `<div class="stamps">${stamps}</div>` : ''}
+          </div>
+        </div>
+        <div class="shift-main">
+          <div class="shift-breaks">${offStartCells}${cells}${offEndCells}</div>
+          <div class="shift-actions">
+            ${clockBtn}
+            <button class="btn-outline btn-xs" onclick="addUnscheduledBreak(${shift.id})"
+                    title="Log an unscheduled break starting now" ${withinShift(shift)?'':'disabled'}>+ Break</button>
+            <button class="btn-ghost btn-sm" onclick="editShift(${shift.id})" title="Edit shift times">✎</button>
+            <button class="btn-ghost btn-sm" onclick="deleteShift(${shift.id})" title="Remove shift">✕</button>
+          </div>
+        </div>
+        <div class="shift-progress-line" style="width:${pct}%"></div>
+      </div>`;
+  }).join('');
+
+  [...dashboard.querySelectorAll('.shift-breaks')].forEach((el, i) => {
+    if(scrollPos[i]) el.scrollLeft = scrollPos[i];
+  });
+
+  if(editingShiftId != null && document.getElementById('editPtoWhen')){
+    updateOffPreview();
+  }
+}
+
+/* Remember which employees' history groups are expanded across re-renders. */
+const openHist = new Set();
+
+function renderHistory(){
+  const wrap = document.getElementById('historyWrap');
+
+  // Snapshot which groups are open straight from the DOM before rebuilding,
+  // so expanded groups stay expanded across re-renders.
+  wrap.querySelectorAll('details.hist-acc').forEach(d => {
+    d.open ? openHist.add(d.dataset.name) : openHist.delete(d.dataset.name);
+  });
+
+  if(!historyLog.length){
+    wrap.innerHTML = `<div class="empty"><span class="empty-icon">📋</span>No completed breaks yet</div>`;
+    return;
+  }
+
+  wrap.innerHTML = groupedHistory().map(([name, entries])=>{
+    const breakEntries = entries.filter(h => h.type !== 'Shift');
+    const shiftEntry = entries.find(h => h.type === 'Shift');
+    const totalMins = breakEntries.reduce((sum,h)=>
+      sum + (h.durationMins ?? (parseInt(h.duration) || 0)), 0);
+
+    const rows = entries.map(h=>`
+      <tr>
+        <td>${esc(h.type)}${h.ptoNote ? `<span class="cell-note"> · ${esc(h.ptoNote)}</span>` : ''}</td>
+        <td>${esc(h.start)}${h.inStatus ? `<span class="cell-note"> · ${esc(h.inStatus)}</span>` : ''}</td>
+        <td>${esc(h.end)}${h.outStatus ? `<span class="cell-note"> · ${esc(h.outStatus)}</span>` : ''}</td>
+        <td>${esc(h.duration)}</td>
+      </tr>`).join('');
+
+    return `
+      <details class="hist-acc" data-name="${esc(name)}" ${openHist.has(name)?'open':''}>
+        <summary>
+          <span class="avatar" style="background:${avatarColor(name)}">${esc(initials(name))}</span>
+          <span class="hist-name">${esc(name)}</span>
+          <span class="hist-types">${breakEntries.map(h=>esc(h.type)).join(' · ')}</span>
+          <span class="hist-meta">${breakEntries.length} break${breakEntries.length===1?'':'s'} · ${totalMins} min${shiftEntry ? ` · worked ${shiftEntry.duration}` : ''}</span>
+          <span class="chev">▾</span>
+        </summary>
+        <table>
+          <thead>
+            <tr><th>Break</th><th>Start</th><th>End</th><th>Duration</th></tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </details>`;
+  }).join('');
+}
+
+function render(){
+  renderClock();
+  renderStats();
+  renderEmployees();
+  renderGantt();
+  renderDashboard();
+  renderHistory();
+}
+
+setInterval(()=>{
+  renderClock();
+  renderStats();
+  renderGantt();
+  if(editingShiftId === null) renderDashboard();  // don't wipe open edit fields
+  checkBreakReminders();
+}, 1000);
+
+render();
+renderBell();
+setGanttMode(ganttMode);   // reflect persisted Timeline view on the toggle
+
+// First run: open the Team accordion so new users see where to start.
+if(!employees.length){
+  document.querySelector('.acc').open = true;
+}
+
+</script>
+
+</body>
+</html>
