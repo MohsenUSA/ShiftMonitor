@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Break Tracker</title>
+<title>ShiftMonitor</title>
 <link id="favicon" rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%234f46e5'/%3E%3Cstop offset='1' stop-color='%23818cf8'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' rx='8' fill='url(%23g)'/%3E%3Cg fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 13h13v8a5 5 0 0 1-5 5h-3a5 5 0 0 1-5-5v-8z'/%3E%3Cpath d='M20 14.5h2.5a3 3 0 0 1 0 6H20'/%3E%3Cpath d='M11.5 9.5c0-1.2 1-1.2 1-2.5'/%3E%3Cpath d='M16 9.5c0-1.2 1-1.2 1-2.5'/%3E%3C/g%3E%3C/svg%3E">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -526,7 +526,9 @@ button:disabled{
   white-space:nowrap;
   overflow:hidden;
   text-overflow:ellipsis;
+  cursor:pointer;
 }
+.shift-name:hover{ text-decoration:underline; text-decoration-style:dotted; }
 
 .shift-time{
   font-size:.72rem;
@@ -1139,7 +1141,7 @@ details[open] > summary .chev{ transform:rotate(180deg); }
           <path d="M11.5 5.5c0-1 .8-1 .8-2"/>
         </svg>
       </span>
-      Break Tracker
+      ShiftMonitor
     </div>
     <div class="topbar-right">
       <button class="bell" id="bellBtn" onclick="toggleReminders()"
@@ -1766,7 +1768,7 @@ const faviconURI = withDot => 'data:image/svg+xml,' + encodeURIComponent(
 let pendingAlerts = 0;
 function setTabAlert(){
   if(faviconEl) faviconEl.href = faviconURI(pendingAlerts > 0);
-  document.title = pendingAlerts ? `🔴 (${pendingAlerts}) Break Tracker` : 'Break Tracker';
+  document.title = pendingAlerts ? `🔴 (${pendingAlerts}) ShiftMonitor` : 'ShiftMonitor';
 }
 
 document.addEventListener('visibilitychange', () => {
@@ -1810,6 +1812,31 @@ function showToast(msg){
   t.style.display = 'flex';
   clearTimeout(toastTimer);
   toastTimer = setTimeout(hideToast, 10000);
+}
+
+/* Copy an employee name to the clipboard (click handler on the name).
+   Uses the async Clipboard API when available, with an execCommand
+   fallback for local file:// pages where that API is often blocked. */
+function copyName(el){
+  const name = el.textContent.trim();
+  if(!name) return;
+  const done = () => showToast(`Copied “${name}” to clipboard.`);
+  const fallback = () => {
+    const ta = document.createElement('textarea');
+    ta.value = name;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try{ document.execCommand('copy'); done(); }
+    catch(e){ showToast('Could not copy to clipboard.'); }
+    document.body.removeChild(ta);
+  };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(name).then(done, fallback);
+  } else {
+    fallback();
+  }
 }
 
 function startBreak(shiftId, index){
@@ -2448,7 +2475,7 @@ function renderDashboard(){
           <div class="shift-who">
             <span class="avatar" style="background:${avatarColor(name)}">${esc(initials(name))}</span>
             <div style="min-width:0">
-              <div class="shift-name">${esc(name)}</div>
+              <div class="shift-name" title="${esc(name)} — click to copy" onclick="copyName(this)">${esc(name)}</div>
               <div class="shift-time">editing shift…</div>
             </div>
           </div>
@@ -2488,7 +2515,7 @@ function renderDashboard(){
           <div class="shift-who">
             <span class="avatar" style="background:${avatarColor(name)}">${esc(initials(name))}</span>
             <div style="min-width:0">
-              <div class="shift-name">${esc(name)}</div>
+              <div class="shift-name" title="${esc(name)} — click to copy" onclick="copyName(this)">${esc(name)}</div>
               <div class="shift-time">${formatTime(shift.start)} – ${formatTime(shift.end)}</div>
             </div>
           </div>
@@ -2571,7 +2598,7 @@ function renderDashboard(){
         <div class="shift-who">
           <span class="avatar" style="background:${avatarColor(name)}">${esc(initials(name))}</span>
           <div style="min-width:0">
-            <div class="shift-name">${esc(name)}</div>
+            <div class="shift-name" title="${esc(name)} — click to copy" onclick="copyName(this)">${esc(name)}</div>
             <div class="shift-time">${formatTime(shift.start)} – ${formatTime(shift.end)}</div>
             ${off ? `<div class="pto-badge" title="Working hours ${formatTime(minToHM(s))} – ${formatTime(minToHM(e))}">${esc(off)}</div>` : ''}
             ${stamps ? `<div class="stamps">${stamps}</div>` : ''}
