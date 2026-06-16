@@ -116,9 +116,9 @@ ul.feat li::before{ content:"✓"; color:var(--accent); font-weight:800; }
       <li>Works offline; data stays in your browser</li>
     </ul>
 
-    <a class="btn" href="https://raw.githubusercontent.com/MohsenUSA/ShiftMonitor/main/ShiftMonitor.html" download="ShiftMonitor.html">⬇ Download ShiftMonitor</a>
+    <a class="btn" id="downloadBtn" href="https://raw.githubusercontent.com/MohsenUSA/ShiftMonitor/main/ShiftMonitor.html" download="ShiftMonitor.html">⬇ Download ShiftMonitor</a>
     <!-- <br>
-    <a class="secondary" href="https://htmlpreview.github.io/?https://raw.githubusercontent.com/MohsenUSA/ShiftMonitor/main/ShiftMonitor.html" target="_blank" rel="noopener">or open it in your browser →</a> -->
+    <a class="secondary" href="https://raw.githubusercontent.com/MohsenUSA/ShiftMonitor/main/ShiftMonitor.html" target="_blank" rel="noopener">or open it in your browser →</a> -->
 
     <div class="note">
       One self-contained HTML file — no install, no server, no accounts.
@@ -131,5 +131,34 @@ ul.feat li::before{ content:"✓"; color:var(--accent); font-weight:800; }
       any of your data. Clearing your browser data will erase everything.
     </div>
   </div>
+
+  <script>
+    // The `download` attribute is ignored for cross-origin URLs, so a plain
+    // link to raw.githubusercontent.com just opens the file. Fetch it as a
+    // blob instead and trigger a real download. raw.githubusercontent.com
+    // sends `Access-Control-Allow-Origin: *`, so the fetch is permitted.
+    document.getElementById('downloadBtn').addEventListener('click', function(e){
+      e.preventDefault();
+      var btn = this, url = btn.href, label = btn.textContent;
+      btn.textContent = '⏳ Downloading…';
+      fetch(url)
+        .then(function(r){ if(!r.ok) throw new Error(r.status); return r.blob(); })
+        .then(function(blob){
+          var a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = btn.getAttribute('download') || 'ShiftMonitor.html';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(a.href);
+          btn.textContent = label;
+        })
+        .catch(function(){
+          // Fallback: open the raw file in a new tab so the user can save it manually.
+          btn.textContent = label;
+          window.open(url, '_blank', 'noopener');
+        });
+    });
+  </script>
 </body>
 </html>
