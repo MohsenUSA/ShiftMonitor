@@ -1230,7 +1230,7 @@ details[open] > summary .chev{ transform:rotate(180deg); }
       <h2>Break History</h2>
       <div class="head-actions">
         <button class="btn-outline btn-sm" onclick="exportHistoryCSV()" title="Plain-data export">⬇ CSV</button>
-        <button class="btn-outline btn-sm" onclick="exportHistoryExcel()" title="Excel export with color-coded cells">⬇ Excel</button>
+        <button class="btn-outline btn-sm" onclick="exportHistoryExcel()" title="Spreadsheet export with color-coded cells">⬇ Spreadsheet</button>
         <button class="btn-ghost btn-sm" onclick="clearHistory()">Clear</button>
       </div>
     </div>
@@ -1931,7 +1931,7 @@ function startNewDay(){
     showToast('Nothing to clear — already a fresh day.');
     return;
   }
-  const exportNote = historyLog.length ? '\n\nTip: export the Break History (CSV/Excel) first if you need it for records.' : '';
+  const exportNote = historyLog.length ? '\n\nTip: export the Break History (CSV/Spreadsheet) first if you need it for records.' : '';
   if(!confirm('Start a new day?\n\nThis removes all shifts and the break history. Your employees are kept for scheduling.' + exportNote)) return;
   shifts = [];
   historyLog = [];
@@ -2127,7 +2127,7 @@ function exportHistoryExcel(){
 
   downloadFile(`break-history-${new Date().toISOString().slice(0,10)}.xlsx`,
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', zip);
-  showToast('Excel file exported — colors included.');
+  showToast('Spreadsheet file exported — colors included.');
 }
 
 function clearHistory(){
