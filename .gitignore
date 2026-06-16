@@ -2,6 +2,6 @@
 *
 
 # …except the app, the landing page, and this ignore file
-!BreakUP.html
+!ShiftMonitor.html
 !index.html
 !.gitignore
