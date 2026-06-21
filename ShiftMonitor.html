@@ -415,6 +415,31 @@ button:disabled{
 
 .chip-search{ margin-bottom:10px; }
 
+.shift-paste{
+  width:100%;
+  padding:9px 12px;
+  border:1px solid var(--border);
+  border-radius:10px;
+  background:#fbfcfe;
+  font:inherit;
+  font-size:.9rem;
+  color:var(--text);
+  resize:vertical;
+  min-height:42px;
+}
+.shift-paste:focus{
+  outline:2px solid var(--accent);
+  outline-offset:-1px;
+  background:white;
+}
+.parse-status{
+  margin-top:6px;
+  font-size:.8rem;
+  font-weight:600;
+}
+.parse-status.ok{ color:var(--green); }
+.parse-status.warn{ color:var(--red); }
+
 .select-chips{
   display:flex;
   flex-wrap:wrap;
@@ -1183,8 +1208,9 @@ details[open] > summary .chev{ transform:rotate(180deg); }
       <div class="acc-body">
         <div class="add-row">
           <input id="employeeName" placeholder="Employee name"
+                 oninput="updateAddEmployeeState()"
                  onkeydown="if(event.key==='Enter')addEmployee()">
-          <button onclick="addEmployee()">Add</button>
+          <button id="addEmployeeBtn" onclick="addEmployee()" disabled>Add</button>
         </div>
         <div class="roster" id="employeeList"></div>
       </div>
@@ -1201,22 +1227,28 @@ details[open] > summary .chev{ transform:rotate(180deg); }
         <div class="select-chips" id="employeeChips"></div>
         <div class="form-error" id="shiftError" hidden></div>
 
+        <label for="shiftPaste">Paste shift text <span class="lbl-hint">optional</span></label>
+        <textarea id="shiftPaste" class="shift-paste" rows="2"
+                  placeholder="Paste a cell or row that contains the two times (HH:MM) — they'll auto-fill below."
+                  oninput="parseScheduleText()"></textarea>
+        <div class="parse-status" id="parseStatus" hidden></div>
+
         <div class="field-row">
           <div>
             <label for="shiftStart">Start <span class="lbl-hint">24h</span></label>
             <input type="text" id="shiftStart" value="00:00" placeholder="HH:MM" maxlength="5"
                    inputmode="numeric" autocomplete="off"
-                   oninput="clampTimeInput(this)" onkeydown="stepTime(this, event)" onblur="normalizeTime(this)">
+                   oninput="clampTimeInput(this); updateAddShiftState()" onkeydown="stepTime(this, event)" onblur="normalizeTime(this); updateAddShiftState()">
           </div>
           <div>
             <label for="shiftEnd">End <span class="lbl-hint">24h</span></label>
             <input type="text" id="shiftEnd" value="00:00" placeholder="HH:MM" maxlength="5"
                    inputmode="numeric" autocomplete="off"
-                   oninput="clampTimeInput(this)" onkeydown="stepTime(this, event)" onblur="normalizeTime(this)">
+                   oninput="clampTimeInput(this); updateAddShiftState()" onkeydown="stepTime(this, event)" onblur="normalizeTime(this); updateAddShiftState()">
           </div>
         </div>
 
-        <button class="btn-primary" onclick="addShift()">Add Shift</button>
+        <button class="btn-primary" id="addShiftBtn" onclick="addShift()" disabled>Add Shift</button>
       </div>
     </details>
 
@@ -1515,6 +1547,13 @@ function selectEmployee(id){
   renderEmployees();
 }
 
+/* Enable the Team "Add" button only when the name field isn't blank. */
+function updateAddEmployeeState(){
+  const btn = document.getElementById('addEmployeeBtn');
+  if(!btn) return;
+  btn.disabled = !document.getElementById('employeeName').value.trim();
+}
+
 function addEmployee(){
   const input = document.getElementById('employeeName');
   const name = input.value.trim();
@@ -1522,6 +1561,7 @@ function addEmployee(){
   employees.push({ id:Date.now(), name });
   input.value = '';
   input.focus();
+  updateAddEmployeeState();
   saveData();
   render();
 }
@@ -1612,6 +1652,48 @@ function stepTime(el, e){
   else          el.setSelectionRange(0, 2);
 }
 
+/* Pull the two shift times out of pasted cell/row text. The times are already
+   24-hour HH:MM, so start vs end is decided purely by order of appearance:
+   first time → Start, second → End. Auto-fills only on an exact pair. */
+function parseScheduleText(){
+  const el = document.getElementById('shiftPaste');
+  const status = document.getElementById('parseStatus');
+  const setStatus = (msg, kind) => {
+    status.textContent = msg;
+    status.className = 'parse-status ' + (kind || '');
+    status.hidden = !msg;
+  };
+
+  if(!el.value.trim()){ setStatus('', ''); return; }
+
+  // Match HH:MM with the hour in 0–23 and minutes in 00–59.
+  const found = el.value.match(/\b([01]?\d|2[0-3]):[0-5]\d\b/g) || [];
+  const times = found.map(parseHM).filter(Boolean);
+
+  if(times.length === 0){
+    setStatus('No times detected — enter times manually.', 'warn');
+  } else if(times.length === 1){
+    setStatus('Only one time detected — enter times manually.', 'warn');
+  } else if(times.length > 2){
+    setStatus('More than two times detected — enter times manually.', 'warn');
+  } else {
+    document.getElementById('shiftStart').value = times[0];
+    document.getElementById('shiftEnd').value = times[1];
+    setStatus(`Detected start ${times[0]} and end ${times[1]}.`, 'ok');
+  }
+  updateAddShiftState();
+}
+
+/* Enable "Add Shift" only once an employee is selected and both Start and End
+   hold a valid 24-hour time. */
+function updateAddShiftState(){
+  const btn = document.getElementById('addShiftBtn');
+  if(!btn) return;
+  const start = document.getElementById('shiftStart').value;
+  const end = document.getElementById('shiftEnd').value;
+  btn.disabled = !(selectedEmployeeId != null && parseHM(start) && parseHM(end));
+}
+
 function addShift(){
   const startEl = document.getElementById('shiftStart');
   const endEl = document.getElementById('shiftEnd');
@@ -1644,6 +1726,8 @@ function addShift(){
   selectedEmployeeId = null;
   startEl.value = '00:00';
   endEl.value = '00:00';
+  const pasteEl = document.getElementById('shiftPaste');
+  if(pasteEl){ pasteEl.value = ''; parseScheduleText(); }
 
   saveData();
   render();
@@ -2367,6 +2451,8 @@ function renderEmployees(){
                   class="chip${e.id===selectedEmployeeId ? ' selected' : ''}"
                   onclick="selectEmployee(${e.id})">${esc(e.name)}</button>`).join('')
       : `<span class="hint" style="margin:0">No employees match “${esc(q)}”.</span>`;
+
+  updateAddShiftState();
 }
 
 let ganttMode = store.getItem('ganttMode') || 'shift';   // 'shift' | 'employee'
