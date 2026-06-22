@@ -145,7 +145,7 @@ body{
 
 .stats{
   display:grid;
-  grid-template-columns:repeat(4, 1fr);
+  grid-template-columns:repeat(auto-fit, minmax(140px, 1fr));
   gap:14px;
   margin-bottom:24px;
 }
@@ -1221,17 +1221,17 @@ details[open] > summary .chev{ transform:rotate(180deg); }
       <div class="acc-body">
         <p class="hint">A 10-min break 2h in (shifts 2h10+) · 30-min lunch on shifts over 5h · second 10-min break after lunch on shifts over 5h30.</p>
 
+        <label for="shiftPaste">Paste shift text <span class="lbl-hint">optional</span></label>
+        <textarea id="shiftPaste" class="shift-paste" rows="2"
+                  placeholder="Paste a cell or row — it auto-detects the employee name and the two times (HH:MM) and fills everything below."
+                  oninput="parseScheduleText()"></textarea>
+        <div class="parse-status" id="parseStatus" hidden></div>
+
         <label>Employee</label>
         <input id="chipSearch" class="chip-search" type="text" placeholder="🔍 Search employees…"
                autocomplete="off" oninput="renderEmployees()">
         <div class="select-chips" id="employeeChips"></div>
         <div class="form-error" id="shiftError" hidden></div>
-
-        <label for="shiftPaste">Paste shift text <span class="lbl-hint">optional</span></label>
-        <textarea id="shiftPaste" class="shift-paste" rows="2"
-                  placeholder="Paste a cell or row that contains the two times (HH:MM) — they'll auto-fill below."
-                  oninput="parseScheduleText()"></textarea>
-        <div class="parse-status" id="parseStatus" hidden></div>
 
         <div class="field-row">
           <div>
@@ -1652,35 +1652,83 @@ function stepTime(el, e){
   else          el.setSelectionRange(0, 2);
 }
 
-/* Pull the two shift times out of pasted cell/row text. The times are already
-   24-hour HH:MM, so start vs end is decided purely by order of appearance:
-   first time → Start, second → End. Auto-fills only on an exact pair. */
+/* Find the employee referenced in pasted text by matching name words as whole
+   words (so "Mohsen 08:30…" matches "Mohsen Irvine"). Returns the best matches:
+   the employees sharing the highest number of matched name words. */
+function matchEmployeesInText(text){
+  const hay = ' ' + text.toLowerCase().replace(/[^a-z0-9]+/g, ' ') + ' ';
+  let best = [], bestScore = 0;
+  employees.forEach(e => {
+    const tokens = e.name.toLowerCase().split(/\s+/)
+      .map(t => t.replace(/[^a-z0-9]+/g, ''))
+      .filter(t => t.length >= 2);
+    const score = tokens.filter(t => hay.includes(' ' + t + ' ')).length;
+    if(score > 0){
+      if(score > bestScore){ bestScore = score; best = [e]; }
+      else if(score === bestScore){ best.push(e); }
+    }
+  });
+  return best;
+}
+
+/* Parse a pasted cell/row: auto-detect the employee and the two shift times.
+   Times are 24-hour HH:MM, so start vs end is decided by order of appearance
+   (first → Start, second → End); times fill only on an exact pair, and the
+   employee is selected only on a single unambiguous name match. */
 function parseScheduleText(){
   const el = document.getElementById('shiftPaste');
   const status = document.getElementById('parseStatus');
-  const setStatus = (msg, kind) => {
-    status.textContent = msg;
-    status.className = 'parse-status ' + (kind || '');
-    status.hidden = !msg;
-  };
+  const text = el.value;
 
-  if(!el.value.trim()){ setStatus('', ''); return; }
+  if(!text.trim()){
+    status.hidden = true;
+    status.textContent = '';
+    return;
+  }
 
-  // Match HH:MM with the hour in 0–23 and minutes in 00–59.
-  const found = el.value.match(/\b([01]?\d|2[0-3]):[0-5]\d\b/g) || [];
-  const times = found.map(parseHM).filter(Boolean);
+  const parts = [];
+  let warn = false;
 
-  if(times.length === 0){
-    setStatus('No times detected — enter times manually.', 'warn');
-  } else if(times.length === 1){
-    setStatus('Only one time detected — enter times manually.', 'warn');
-  } else if(times.length > 2){
-    setStatus('More than two times detected — enter times manually.', 'warn');
+  // --- Employee ---
+  if(!employees.length){
+    parts.push('add a team member first');
+    warn = true;
   } else {
+    const matches = matchEmployeesInText(text);
+    if(matches.length === 1){
+      selectedEmployeeId = matches[0].id;
+      renderEmployees();
+      parts.push(`employee ${matches[0].name}`);
+    } else if(matches.length === 0){
+      parts.push('no matching employee — pick one');
+      warn = true;
+    } else {
+      parts.push(`${matches.length} employees matched — pick one`);
+      warn = true;
+    }
+  }
+
+  // --- Times (hour 0–23, minutes 00–59) ---
+  const found = text.match(/\b([01]?\d|2[0-3]):[0-5]\d\b/g) || [];
+  const times = found.map(parseHM).filter(Boolean);
+  if(times.length === 2){
     document.getElementById('shiftStart').value = times[0];
     document.getElementById('shiftEnd').value = times[1];
-    setStatus(`Detected start ${times[0]} and end ${times[1]}.`, 'ok');
+    parts.push(`start ${times[0]}, end ${times[1]}`);
+  } else if(times.length === 0){
+    parts.push('no times — enter manually');
+    warn = true;
+  } else if(times.length === 1){
+    parts.push('only one time — enter manually');
+    warn = true;
+  } else {
+    parts.push('more than two times — enter manually');
+    warn = true;
   }
+
+  status.textContent = (warn ? '⚠ ' : '✓ ') + parts.join(' · ');
+  status.className = 'parse-status ' + (warn ? 'warn' : 'ok');
+  status.hidden = false;
   updateAddShiftState();
 }
 
@@ -2211,12 +2259,27 @@ function exportRow(h){
   ];
 }
 
+/* Schedule summary as [label, value] rows, prepended to both exports. */
+function summaryRows(){
+  const s = scheduleSummary();
+  return [
+    ['Scheduled hours (net of lunch)', s.netHours],
+    ['Total scheduled time', s.schedMins ? fmtDur(s.schedMins) : '0m'],
+    ['Lunch breaks deducted', s.lunchCount],
+    ['Team members', s.teamCount],
+    ['Scheduled team members', s.scheduledCount]
+  ];
+}
+
 function exportHistoryCSV(){
   if(!historyLog.length){ showToast('No history to export yet.'); return; }
   const cell = v => `"${String(v ?? '').replace(/"/g,'""')}"`;
-  const lines = [EXPORT_COLS.map(cell).join(',')]
-    .concat(groupedHistory().flatMap(([, entries]) => entries)
-      .map(h => exportRow(h).map(cell).join(',')));
+  const lines = [
+    ...summaryRows().map(r => r.map(cell).join(',')),
+    '',
+    EXPORT_COLS.map(cell).join(','),
+    ...groupedHistory().flatMap(([, entries]) => entries).map(h => exportRow(h).map(cell).join(','))
+  ];
   downloadFile(`break-history-${new Date().toISOString().slice(0,10)}.csv`,
     'text/csv;charset=utf-8', '﻿' + lines.join('\r\n'));
   showToast('CSV exported.');
@@ -2301,14 +2364,22 @@ function exportHistoryExcel(){
     return `<c r="${ref}" s="${s}" t="inlineStr"><is><t>${xmlEsc(v)}</t></is></c>`;
   };
 
-  let rowsXml = `<row r="1">${EXPORT_COLS.map((c,i)=>cellXml(c,i,1,1)).join('')}</row>`;
+  // Schedule summary block at the top, a blank spacer, then the history table.
+  let rowsXml = '', r = 1;
+  summaryRows().forEach(([label, val]) => {
+    rowsXml += `<row r="${r}">${cellXml(label,0,r,0)}${cellXml(val,1,r,0)}</row>`;
+    r++;
+  });
+  r++;   // blank spacer row
+  const headerRow = r;
+  rowsXml += `<row r="${headerRow}">${EXPORT_COLS.map((c,i)=>cellXml(c,i,headerRow,1)).join('')}</row>`;
   groupedHistory().flatMap(([, entries]) => entries).forEach((h,i)=>{
-    const s = styleOf(h), r = i+2;
-    rowsXml += `<row r="${r}">${exportRow(h).map((v,ci)=>cellXml(v,ci,r,s)).join('')}</row>`;
+    const s = styleOf(h), rr = headerRow + 1 + i;
+    rowsXml += `<row r="${rr}">${exportRow(h).map((v,ci)=>cellXml(v,ci,rr,s)).join('')}</row>`;
   });
 
   const sheet = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><cols>${[22,14,12,12,14,14,24].map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join('')}</cols><sheetData>${rowsXml}</sheetData></worksheet>`;
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><cols>${[30,14,12,12,14,14,24].map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join('')}</cols><sheetData>${rowsXml}</sheetData></worksheet>`;
 
   const styles = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="12"/><name val="Calibri"/></font><font><b/><sz val="12"/><name val="Calibri"/></font></fonts><fills count="7"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>${['DCFCE7','FEE2E2','F3E8FF','FFFBEB','EEF2FF'].map(c=>`<fill><patternFill patternType="solid"><fgColor rgb="FF${c}"/><bgColor indexed="64"/></patternFill></fill>`).join('')}</fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="7"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="6" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="0" fontId="0" fillId="2" borderId="0" xfId="0" applyFill="1"/><xf numFmtId="0" fontId="0" fillId="3" borderId="0" xfId="0" applyFill="1"/><xf numFmtId="0" fontId="0" fillId="4" borderId="0" xfId="0" applyFill="1"/><xf numFmtId="0" fontId="0" fillId="5" borderId="0" xfId="0" applyFill="1"/><xf numFmtId="0" fontId="0" fillId="6" borderId="0" xfId="0" applyFill="1"/></cellXfs></styleSheet>`;
@@ -2370,6 +2441,25 @@ function renderClock(){
     now.toLocaleDateString([], {weekday:'long', month:'long', day:'numeric'});
 }
 
+/* Shared schedule totals — used by both the stat cards and the exports so
+   the numbers always agree. Scheduled time is shift length minus unpaid
+   30-min lunch breaks. */
+function scheduleSummary(){
+  let schedMins = 0, lunchMins = 0, lunchCount = 0;
+  shifts.forEach(s => {
+    schedMins += minutesBetween(s.start, s.end);
+    s.breaks.forEach(b => { if(b.type === 'Lunch'){ lunchMins += b.expected; lunchCount++; } });
+  });
+  const netMins = Math.max(0, schedMins - lunchMins);
+  return {
+    schedMins, lunchMins, lunchCount, netMins,
+    netHours: Math.round(netMins / 60 * 10) / 10,
+    shiftCount: shifts.length,
+    teamCount: employees.length,
+    scheduledCount: new Set(shifts.map(s => s.employeeId)).size
+  };
+}
+
 function renderStats(){
   const active = [], dueSoon = [], overdue = [];
 
@@ -2391,10 +2481,24 @@ function renderStats(){
     ? employees.map(e => `${e.name}${scheduledIds.has(e.id) ? ' · scheduled today' : ' · no shift today'}`).join('\n')
     : 'No employees yet — add them in the Team panel';
 
+  const scheduledNames = employees.filter(e => scheduledIds.has(e.id)).map(e => e.name);
+  const scheduledTip = scheduledNames.length ? scheduledNames.join('\n') : 'No team members scheduled yet';
+
   const tip = (lines, empty) => lines.length ? lines.join('\n') : empty;
 
+  // Total scheduled time minus unpaid 30-min lunch breaks.
+  const sum = scheduleSummary();
+  const hoursNum = sum.shiftCount ? `${sum.netHours}h` : '0h';
+  const hoursTip = sum.shiftCount
+    ? `${fmtDur(sum.schedMins)} scheduled across ${sum.shiftCount} shift${sum.shiftCount > 1 ? 's' : ''}`
+      + (sum.lunchMins ? ` − ${fmtDur(sum.lunchMins)} (${sum.lunchCount} lunch break${sum.lunchCount > 1 ? 's' : ''})` : '')
+      + ` = ${fmtDur(sum.netMins)} net`
+    : 'No shifts scheduled yet';
+
   const cards = [
+    { icon:'⏱️', bg:'var(--green-soft)',  label:'Scheduled hrs',  num:hoursNum, tip:hoursTip },
     { icon:'👥', bg:'var(--accent-soft)', label:'Team members', num:employees.length, tip:teamTip },
+    { icon:'🗓️', bg:'var(--blue-soft)',   label:'Scheduled',    num:scheduledIds.size, tip:scheduledTip },
     { icon:'☕', bg:'var(--blue-soft)',   label:'On break now',  num:active.length,
       tip:tip(active, 'No one is on a break right now') },
     { icon:'⏰', bg:'var(--amber-soft)',  label:'Due in 30 min', num:dueSoon.length,
