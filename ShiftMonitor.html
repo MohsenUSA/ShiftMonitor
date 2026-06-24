@@ -440,6 +440,43 @@ button:disabled{
 .parse-status.ok{ color:var(--green); }
 .parse-status.warn{ color:var(--red); }
 
+.bulk-preview{ margin-top:10px; }
+.bulk-head{ font-size:.78rem; font-weight:700; color:var(--text-2); margin-bottom:6px; }
+.bulk-list{
+  display:flex;
+  flex-direction:column;
+  gap:5px;
+  max-height:240px;
+  overflow:auto;
+  margin-bottom:12px;
+}
+.bulk-row{
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr) auto auto auto;
+  align-items:center;
+  gap:8px;
+  padding:6px 8px;
+  border:1px solid var(--border);
+  border-radius:8px;
+  background:#fbfcfe;
+  font-size:.82rem;
+}
+.bulk-row.ok{  background:var(--green-soft); border-color:var(--green-border); }
+.bulk-row.bad{ background:var(--red-soft);   border-color:var(--red-border); }
+.bulk-ic{ font-weight:700; }
+.bulk-name{ font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.bulk-time{ color:var(--text-2); font-variant-numeric:tabular-nums; }
+.bulk-reason{ font-size:.72rem; font-weight:600; color:var(--red); white-space:nowrap; }
+.bulk-x{
+  background:transparent;
+  color:var(--text-2);
+  padding:2px 7px;
+  border-radius:6px;
+  font-size:1rem;
+  line-height:1;
+}
+.bulk-x:hover{ color:var(--red); filter:none; }
+
 .select-chips{
   display:flex;
   flex-wrap:wrap;
@@ -1223,9 +1260,10 @@ details[open] > summary .chev{ transform:rotate(180deg); }
 
         <label for="shiftPaste">Paste shift text <span class="lbl-hint">optional</span></label>
         <textarea id="shiftPaste" class="shift-paste" rows="2"
-                  placeholder="Paste a cell or row — it auto-detects the employee name and the two times (HH:MM) and fills everything below."
+                  placeholder="Paste one or more rows — one shift per line. Auto-detects the employee and times (HH:MM); multiple rows open a review list before adding."
                   oninput="parseScheduleText()"></textarea>
         <div class="parse-status" id="parseStatus" hidden></div>
+        <div class="bulk-preview" id="bulkPreview" hidden></div>
 
         <label>Employee</label>
         <input id="chipSearch" class="chip-search" type="text" placeholder="🔍 Search employees…"
@@ -1671,21 +1709,36 @@ function matchEmployeesInText(text){
   return best;
 }
 
-/* Parse a pasted cell/row: auto-detect the employee and the two shift times.
-   Times are 24-hour HH:MM, so start vs end is decided by order of appearance
-   (first → Start, second → End); times fill only on an exact pair, and the
-   employee is selected only on a single unambiguous name match. */
+/* Paste dispatcher: one line (a single cell/row) fills the form inline; two or
+   more lines that contain times switch to a reviewable bulk-import preview. */
 function parseScheduleText(){
-  const el = document.getElementById('shiftPaste');
+  const text = document.getElementById('shiftPaste').value;
   const status = document.getElementById('parseStatus');
-  const text = el.value;
+  const TIME_RE = /\b([01]?\d|2[0-3]):[0-5]\d\b/;
 
   if(!text.trim()){
     status.hidden = true;
     status.textContent = '';
+    clearBulkPreview();
     return;
   }
 
+  const timeLines = text.split(/\r?\n/).map(l => l.trim()).filter(l => TIME_RE.test(l));
+  if(timeLines.length >= 2){
+    status.hidden = true;
+    parseBulk(timeLines);
+  } else {
+    clearBulkPreview();
+    parseSingleShift(text);
+  }
+}
+
+/* Single-shift paste: auto-detect the employee and the two shift times.
+   Times are 24-hour HH:MM, so start vs end is decided by order of appearance
+   (first → Start, second → End); times fill only on an exact pair, and the
+   employee is selected only on a single unambiguous name match. */
+function parseSingleShift(text){
+  const status = document.getElementById('parseStatus');
   const parts = [];
   let warn = false;
 
@@ -1732,6 +1785,96 @@ function parseScheduleText(){
   updateAddShiftState();
 }
 
+/* ---------- Bulk import: one shift per line, reviewed before adding ---------- */
+let bulkRows = [];
+
+/* Parse each line into a candidate shift, flagging anything that isn't an
+   unambiguous single employee with exactly two times. */
+function parseBulk(lines){
+  const TIME_RE = /\b([01]?\d|2[0-3]):[0-5]\d\b/g;
+  const seen = new Set();   // exact employee+start+end keys seen earlier in this paste
+  bulkRows = lines.map((line, i) => {
+    const times = (line.match(TIME_RE) || []).map(parseHM).filter(Boolean);
+    const matches = employees.length ? matchEmployeesInText(line) : [];
+    const reasons = [];
+    let employeeId = null, name = '';
+
+    if(matches.length === 1){ employeeId = matches[0].id; name = matches[0].name; }
+    else if(matches.length === 0){ reasons.push(employees.length ? 'no employee match' : 'no employees'); }
+    else { name = matches.map(m => m.name).join(', '); reasons.push(`${matches.length} employees matched`); }
+
+    const start = times[0] || '', end = times[1] || '';
+    if(times.length !== 2){
+      reasons.push(times.length === 0 ? 'no times' : times.length === 1 ? 'only one time' : 'too many times');
+    }
+
+    // Exact duplicate check (same employee + same start + same end), only once
+    // the row is otherwise valid. Different times = a split shift, not a dup.
+    if(!reasons.length){
+      const key = employeeId + '|' + start + '|' + end;
+      if(shifts.some(s => s.employeeId === employeeId && s.start === start && s.end === end)){
+        reasons.push('already scheduled');
+      } else if(seen.has(key)){
+        reasons.push('duplicate row');
+      } else {
+        seen.add(key);
+      }
+    }
+
+    return { id:i, line, employeeId, name, start, end, valid: reasons.length === 0, reason: reasons.join(' · ') };
+  });
+  renderBulkPreview();
+}
+
+const snippet = s => s.length > 32 ? s.slice(0, 31) + '…' : s;
+
+function renderBulkPreview(){
+  const wrap = document.getElementById('bulkPreview');
+  if(!bulkRows.length){ wrap.hidden = true; wrap.innerHTML = ''; return; }
+
+  const validCount = bulkRows.filter(r => r.valid).length;
+  const rows = bulkRows.map(r => `
+    <div class="bulk-row ${r.valid ? 'ok' : 'bad'}">
+      <span class="bulk-ic">${r.valid ? '✓' : '⚠'}</span>
+      <span class="bulk-name" title="${esc(r.line)}">${r.name ? esc(r.name) : '<em>' + esc(snippet(r.line)) + '</em>'}</span>
+      <span class="bulk-time">${esc(r.start || '—')}–${esc(r.end || '—')}</span>
+      <span class="bulk-reason">${r.valid ? '' : esc(r.reason)}</span>
+      <button class="bulk-x" onclick="removeBulkRow(${r.id})" title="Remove row">×</button>
+    </div>`).join('');
+
+  wrap.innerHTML = `
+    <div class="bulk-head">${validCount} of ${bulkRows.length} ready to add</div>
+    <div class="bulk-list">${rows}</div>
+    <button class="btn-primary" onclick="addBulkShifts()" ${validCount ? '' : 'disabled'}>Add ${validCount} shift${validCount === 1 ? '' : 's'}</button>`;
+  wrap.hidden = false;
+}
+
+function removeBulkRow(id){
+  bulkRows = bulkRows.filter(r => r.id !== id);
+  renderBulkPreview();
+}
+
+function clearBulkPreview(){
+  bulkRows = [];
+  const wrap = document.getElementById('bulkPreview');
+  if(wrap){ wrap.hidden = true; wrap.innerHTML = ''; }
+}
+
+function addBulkShifts(){
+  const valid = bulkRows.filter(r => r.valid);
+  if(!valid.length) return;
+  const base = Date.now();
+  valid.forEach((r, i) => {
+    shifts.push({ id: base + i, employeeId: r.employeeId, start: r.start, end: r.end, breaks: createBreaks(r.start, r.end) });
+  });
+  const added = valid.length, skipped = bulkRows.length - added;
+  document.getElementById('shiftPaste').value = '';
+  clearBulkPreview();
+  saveData();
+  render();
+  showToast(`Added ${added} shift${added === 1 ? '' : 's'}${skipped ? `, skipped ${skipped}` : ''}.`);
+}
+
 /* Enable "Add Shift" only once an employee is selected and both Start and End
    hold a valid 24-hour time. */
 function updateAddShiftState(){
@@ -1758,6 +1901,11 @@ function addShift(){
   }
   if(!start || !end){
     error.textContent = 'Enter start and end as 24-hour HH:MM (e.g. 09:00, 17:30).';
+    error.hidden = false;
+    return;
+  }
+  if(shifts.some(s => s.employeeId === selectedEmployeeId && s.start === start && s.end === end)){
+    error.textContent = `${getEmployeeName(selectedEmployeeId)} already has a ${start}–${end} shift.`;
     error.hidden = false;
     return;
   }
