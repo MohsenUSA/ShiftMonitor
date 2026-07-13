@@ -247,6 +247,11 @@ body{
   color:var(--text-3);
 }
 
+.acc-head-btn{
+  margin-left:auto;
+  flex-shrink:0;
+}
+
 .acc-body{
   padding:4px 20px 20px;
   border-top:1px solid var(--border);
@@ -1255,8 +1260,9 @@ details[open] > summary .chev{ transform:rotate(180deg); }
       </div>
     </details>
 
-    <details class="card acc">
-      <summary>🗓️ Schedule a Shift <span class="acc-hint">breaks planned automatically</span></summary>
+    <details class="card acc" id="scheduleAcc">
+      <summary>🗓️ Schedule a Shift <span class="acc-hint">breaks planned automatically</span>
+        <button class="btn-outline btn-sm acc-head-btn" onclick="event.stopPropagation(); startNewDay()" title="Clear all shifts and break history, keep employees">⟳ New Day</button></summary>
       <div class="acc-body">
         <p class="hint">A 10-min break 2h in (shifts 2h10+) · 30-min lunch on shifts over 5h · second 10-min break after lunch on shifts over 5h30.</p>
 
@@ -1289,7 +1295,6 @@ details[open] > summary .chev{ transform:rotate(180deg); }
         </div>
 
         <button class="btn-primary" id="addShiftBtn" onclick="addShift()" disabled>Add Shift</button>
-        <button class="btn-outline btn-sm" onclick="startNewDay()" title="Clear all shifts and break history, keep employees">⟳ New Day</button>
       </div>
     </details>
 
@@ -1927,6 +1932,9 @@ function addShift(){
 
   saveData();
   render();
+
+  const acc = document.getElementById('scheduleAcc');
+  if(acc){ acc.open = false; }
 }
 
 let editingShiftId = null;
@@ -2346,6 +2354,9 @@ function startNewDay(){
   saveData();
   render();
   showToast('New day started — roster kept, schedule and history cleared.');
+
+  const acc = document.getElementById('scheduleAcc');
+  if(acc){ acc.open = false; }
 }
 
 /* ---------- History export ---------- */
