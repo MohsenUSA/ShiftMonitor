@@ -46,6 +46,8 @@ body{
   -webkit-font-smoothing:antialiased;
 }
 
+/* Developped by Mohsen Hajihosseinnejad */
+
 /* ---------- Header ---------- */
 
 .topbar{
@@ -1287,6 +1289,7 @@ details[open] > summary .chev{ transform:rotate(180deg); }
         </div>
 
         <button class="btn-primary" id="addShiftBtn" onclick="addShift()" disabled>Add Shift</button>
+        <button class="btn-outline btn-sm" onclick="startNewDay()" title="Clear all shifts and break history, keep employees">⟳ New Day</button>
       </div>
     </details>
 
@@ -1307,9 +1310,6 @@ details[open] > summary .chev{ transform:rotate(180deg); }
   <div class="card">
     <div class="card-head-row">
       <h2>Today's Shifts</h2>
-      <div class="head-actions">
-        <button class="btn-outline btn-sm" onclick="startNewDay()" title="Clear all shifts and break history, keep employees">⟳ New Day</button>
-      </div>
     </div>
     <p class="hint">Live view of every scheduled break. Rows change color as breaks come due.</p>
     <div id="dashboard"></div>
@@ -1470,7 +1470,7 @@ function fullOffKind(shift){
   return ((shift.dropStart||0)+(shift.dropEnd||0)) >= ((shift.ptoStart||0)+(shift.ptoEnd||0)) ? 'drop' : 'pto';
 }
 
-/* Human summary combining both kinds, e.g. "PTO 1h 00m end · Drop 30m start". */
+/* Summary combining both kinds, e.g. "PTO 1h 00m end · Drop 30m start". */
 function offSummary(shift){
   if(isFullOff(shift)) return 'Full-shift ' + OFF_KINDS[fullOffKind(shift)].word;
   const part = kind => {
@@ -1691,7 +1691,7 @@ function stepTime(el, e){
 }
 
 /* Find the employee referenced in pasted text by matching name words as whole
-   words (so "Mohsen 08:30…" matches "Mohsen Irvine"). Returns the best matches:
+   words. Returns the best matches:
    the employees sharing the highest number of matched name words. */
 function matchEmployeesInText(text){
   const hay = ' ' + text.toLowerCase().replace(/[^a-z0-9]+/g, ' ') + ' ';
