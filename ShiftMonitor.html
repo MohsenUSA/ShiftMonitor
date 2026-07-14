@@ -1726,12 +1726,51 @@ function matchEmployeesInText(text){
   return best;
 }
 
-/* Paste dispatcher: one line (a single cell/row) fills the form inline; two or
-   more lines that contain times switch to a reviewable bulk-import preview. */
+/* Break pasted text into individual shift segments. Times are paired in order
+   of appearance (1st+2nd = one shift, 3rd+4th = the next…), so a single line
+   can hold several shifts — e.g. "sam 09:00 12:00 mason 13:00 17:00" — and one
+   employee can legitimately appear more than once (a split shift). The name for
+   each segment is the text just before its first time; for a line that holds a
+   single shift we match against the whole line instead, so a "time first"
+   layout still finds the employee. */
+function extractShiftSegments(text){
+  const segments = [];
+  text.split(/\r?\n/).forEach(rawLine => {
+    const line = rawLine.trim();
+    if(!line) return;
+
+    const re = /\b([01]?\d|2[0-3]):[0-5]\d\b/g;
+    const found = [];
+    let m;
+    while((m = re.exec(line))){
+      const t = parseHM(m[0]);
+      if(t) found.push({ t, idx: m.index, end: m.index + m[0].length });
+    }
+    if(!found.length) return;   // text with no time can't be a shift
+
+    const multi = found.length > 2;   // more than one shift's worth of times
+    let prev = 0;
+    for(let i = 0; i < found.length; i += 2){
+      const a = found[i], b = found[i + 1];
+      const nameStr = line.slice(prev, a.idx).trim();
+      segments.push({
+        line,
+        matchText: multi ? nameStr : line,
+        start: a.t,
+        end: b ? b.t : '',
+        timeCount: b ? 2 : 1
+      });
+      prev = b ? b.end : a.end;
+    }
+  });
+  return segments;
+}
+
+/* Paste dispatcher: a single shift fills the form inline; two or more shifts
+   (across lines or within one line) switch to a reviewable bulk-import preview. */
 function parseScheduleText(){
   const text = document.getElementById('shiftPaste').value;
   const status = document.getElementById('parseStatus');
-  const TIME_RE = /\b([01]?\d|2[0-3]):[0-5]\d\b/;
 
   if(!text.trim()){
     status.hidden = true;
@@ -1740,10 +1779,10 @@ function parseScheduleText(){
     return;
   }
 
-  const timeLines = text.split(/\r?\n/).map(l => l.trim()).filter(l => TIME_RE.test(l));
-  if(timeLines.length >= 2){
+  const segments = extractShiftSegments(text);
+  if(segments.length >= 2){
     status.hidden = true;
-    parseBulk(timeLines);
+    parseBulk(segments);
   } else {
     clearBulkPreview();
     parseSingleShift(text);
@@ -1767,7 +1806,7 @@ function parseSingleShift(text){
   // review list, where the name is editable and a new employee is created.
   if(matches.length === 0 && times.length === 2 && extractName(text)){
     status.hidden = true;
-    parseBulk([text]);
+    parseBulk(extractShiftSegments(text));
     return;
   }
 
@@ -1825,14 +1864,12 @@ function extractName(line){
 /* ---------- Bulk import: one shift per line, reviewed before adding ---------- */
 let bulkRows = [];
 
-/* Parse each line into a candidate shift. Rows with exactly two times but no
+/* Turn each shift segment into a candidate row. Segments with two times but no
    matching employee become "new" rows: the leftover text is offered as an
    editable name and a fresh employee is created when the shift is added. */
-function parseBulk(lines){
-  const TIME_RE = /\b([01]?\d|2[0-3]):[0-5]\d\b/g;
-  bulkRows = lines.map((line, i) => {
-    const times = (line.match(TIME_RE) || []).map(parseHM).filter(Boolean);
-    const matches = employees.length ? matchEmployeesInText(line) : [];
+function parseBulk(segments){
+  bulkRows = segments.map((seg, i) => {
+    const matches = employees.length ? matchEmployeesInText(seg.matchText) : [];
     let employeeId = null, name = '', isNew = false, ambiguous = false;
 
     if(matches.length === 1){
@@ -1842,17 +1879,17 @@ function parseBulk(lines){
     } else {
       // No existing match — reuse an employee whose name equals the leftover
       // text exactly, otherwise queue a new employee to be created.
-      const candidate = extractName(line);
+      const candidate = extractName(seg.matchText);
       const existing = candidate && employees.find(e => e.name.toLowerCase() === candidate.toLowerCase());
       if(existing){ employeeId = existing.id; name = existing.name; }
       else { name = candidate; isNew = true; }
     }
 
     return {
-      id:i, line, employeeId, name, isNew, ambiguous,
+      id:i, line: seg.line, employeeId, name, isNew, ambiguous,
       matchCount: matches.length,
-      timeCount: times.length,
-      start: times[0] || '', end: times[1] || '',
+      timeCount: seg.timeCount,
+      start: seg.start, end: seg.end,
       valid:false, reason:''
     };
   });
