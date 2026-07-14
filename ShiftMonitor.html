@@ -474,6 +474,18 @@ button:disabled{
 .bulk-name{ font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .bulk-time{ color:var(--text-2); font-variant-numeric:tabular-nums; }
 .bulk-reason{ font-size:.72rem; font-weight:600; color:var(--red); white-space:nowrap; }
+.bulk-reason.new{ color:var(--green); }
+.bulk-name-edit{
+  font:inherit;
+  font-weight:600;
+  width:100%;
+  min-width:0;
+  padding:3px 6px;
+  border:1px solid var(--green-border);
+  border-radius:6px;
+  background:white;
+}
+.bulk-name-edit:focus{ outline:none; border-color:var(--green); }
 .bulk-x{
   background:transparent;
   color:var(--text-2);
@@ -1268,7 +1280,7 @@ details[open] > summary .chev{ transform:rotate(180deg); }
 
         <label for="shiftPaste">Paste shift text <span class="lbl-hint">optional</span></label>
         <textarea id="shiftPaste" class="shift-paste" rows="2"
-                  placeholder="Paste one or more rows — one shift per line. Auto-detects the employee and times (HH:MM); multiple rows open a review list before adding."
+                  placeholder="Paste one or more rows — one shift per line. Auto-detects the employee and times (HH:MM); unknown names open a review list where you can edit them and add as new employees."
                   oninput="parseScheduleText()"></textarea>
         <div class="parse-status" id="parseStatus" hidden></div>
         <div class="bulk-preview" id="bulkPreview" hidden></div>
@@ -1747,12 +1759,23 @@ function parseSingleShift(text){
   const parts = [];
   let warn = false;
 
+  const matches = employees.length ? matchEmployeesInText(text) : [];
+  const found = text.match(/\b([01]?\d|2[0-3]):[0-5]\d\b/g) || [];
+  const times = found.map(parseHM).filter(Boolean);
+
+  // No matching employee but a clear name + shift window → offer it in the
+  // review list, where the name is editable and a new employee is created.
+  if(matches.length === 0 && times.length === 2 && extractName(text)){
+    status.hidden = true;
+    parseBulk([text]);
+    return;
+  }
+
   // --- Employee ---
   if(!employees.length){
     parts.push('add a team member first');
     warn = true;
   } else {
-    const matches = matchEmployeesInText(text);
     if(matches.length === 1){
       selectedEmployeeId = matches[0].id;
       renderEmployees();
@@ -1767,8 +1790,6 @@ function parseSingleShift(text){
   }
 
   // --- Times (hour 0–23, minutes 00–59) ---
-  const found = text.match(/\b([01]?\d|2[0-3]):[0-5]\d\b/g) || [];
-  const times = found.map(parseHM).filter(Boolean);
   if(times.length === 2){
     document.getElementById('shiftStart').value = times[0];
     document.getElementById('shiftEnd').value = times[1];
@@ -1790,34 +1811,69 @@ function parseSingleShift(text){
   updateAddShiftState();
 }
 
+/* Strip the time tokens (and the separators around them) out of a pasted line
+   to recover the leftover text as a candidate employee name. */
+function extractName(line){
+  return line
+    .replace(/\b([01]?\d|2[0-3]):[0-5]\d\b/g, ' ')   // remove HH:MM times
+    .replace(/[\t,;|]+/g, ' ')                        // column separators
+    .replace(/[-–—]+/g, ' ')                          // time-range dashes
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 /* ---------- Bulk import: one shift per line, reviewed before adding ---------- */
 let bulkRows = [];
 
-/* Parse each line into a candidate shift, flagging anything that isn't an
-   unambiguous single employee with exactly two times. */
+/* Parse each line into a candidate shift. Rows with exactly two times but no
+   matching employee become "new" rows: the leftover text is offered as an
+   editable name and a fresh employee is created when the shift is added. */
 function parseBulk(lines){
   const TIME_RE = /\b([01]?\d|2[0-3]):[0-5]\d\b/g;
-  const seen = new Set();   // exact employee+start+end keys seen earlier in this paste
   bulkRows = lines.map((line, i) => {
     const times = (line.match(TIME_RE) || []).map(parseHM).filter(Boolean);
     const matches = employees.length ? matchEmployeesInText(line) : [];
-    const reasons = [];
-    let employeeId = null, name = '';
+    let employeeId = null, name = '', isNew = false, ambiguous = false;
 
-    if(matches.length === 1){ employeeId = matches[0].id; name = matches[0].name; }
-    else if(matches.length === 0){ reasons.push(employees.length ? 'no employee match' : 'no employees'); }
-    else { name = matches.map(m => m.name).join(', '); reasons.push(`${matches.length} employees matched`); }
-
-    const start = times[0] || '', end = times[1] || '';
-    if(times.length !== 2){
-      reasons.push(times.length === 0 ? 'no times' : times.length === 1 ? 'only one time' : 'too many times');
+    if(matches.length === 1){
+      employeeId = matches[0].id; name = matches[0].name;
+    } else if(matches.length > 1){
+      name = matches.map(m => m.name).join(', '); ambiguous = true;
+    } else {
+      // No existing match — reuse an employee whose name equals the leftover
+      // text exactly, otherwise queue a new employee to be created.
+      const candidate = extractName(line);
+      const existing = candidate && employees.find(e => e.name.toLowerCase() === candidate.toLowerCase());
+      if(existing){ employeeId = existing.id; name = existing.name; }
+      else { name = candidate; isNew = true; }
     }
 
-    // Exact duplicate check (same employee + same start + same end), only once
-    // the row is otherwise valid. Different times = a split shift, not a dup.
+    return {
+      id:i, line, employeeId, name, isNew, ambiguous,
+      matchCount: matches.length,
+      timeCount: times.length,
+      start: times[0] || '', end: times[1] || '',
+      valid:false, reason:''
+    };
+  });
+  revalidateBulk();
+  renderBulkPreview();
+}
+
+/* (Re)compute each row's validity and reason from its current fields — cheap
+   enough to re-run after an inline name edit without re-parsing the text. */
+function revalidateBulk(){
+  const seen = new Set();   // employee/name + start + end keys seen earlier in this paste
+  bulkRows.forEach(r => {
+    const reasons = [];
+    if(r.ambiguous)                      reasons.push(`${r.matchCount} employees matched — remove & pick one`);
+    else if(r.isNew && !r.name.trim())   reasons.push('name required');
+    if(r.timeCount !== 2){
+      reasons.push(r.timeCount === 0 ? 'no times' : r.timeCount === 1 ? 'only one time' : 'too many times');
+    }
     if(!reasons.length){
-      const key = employeeId + '|' + start + '|' + end;
-      if(shifts.some(s => s.employeeId === employeeId && s.start === start && s.end === end)){
+      const key = (r.isNew ? 'new:' + r.name.trim().toLowerCase() : r.employeeId) + '|' + r.start + '|' + r.end;
+      if(!r.isNew && shifts.some(s => s.employeeId === r.employeeId && s.start === r.start && s.end === r.end)){
         reasons.push('already scheduled');
       } else if(seen.has(key)){
         reasons.push('duplicate row');
@@ -1825,10 +1881,9 @@ function parseBulk(lines){
         seen.add(key);
       }
     }
-
-    return { id:i, line, employeeId, name, start, end, valid: reasons.length === 0, reason: reasons.join(' · ') };
+    r.valid = reasons.length === 0;
+    r.reason = reasons.join(' · ');
   });
-  renderBulkPreview();
 }
 
 const snippet = s => s.length > 32 ? s.slice(0, 31) + '…' : s;
@@ -1837,25 +1892,76 @@ function renderBulkPreview(){
   const wrap = document.getElementById('bulkPreview');
   if(!bulkRows.length){ wrap.hidden = true; wrap.innerHTML = ''; return; }
 
-  const validCount = bulkRows.filter(r => r.valid).length;
-  const rows = bulkRows.map(r => `
-    <div class="bulk-row ${r.valid ? 'ok' : 'bad'}">
+  const rows = bulkRows.map(r => {
+    const nameCell = r.isNew
+      ? `<input class="bulk-name-edit" value="${esc(r.name)}" placeholder="New employee name"
+                oninput="updateBulkName(${r.id}, this.value)"
+                onkeydown="if(event.key==='Enter')this.blur()">`
+      : `<span class="bulk-name" title="${esc(r.line)}">${r.name ? esc(r.name) : '<em>' + esc(snippet(r.line)) + '</em>'}</span>`;
+    const reasonCell = r.valid
+      ? (r.isNew ? '<span class="bulk-reason new">＋ new</span>' : '<span class="bulk-reason"></span>')
+      : `<span class="bulk-reason">${esc(r.reason)}</span>`;
+    return `
+    <div class="bulk-row ${r.valid ? 'ok' : 'bad'}" data-id="${r.id}">
       <span class="bulk-ic">${r.valid ? '✓' : '⚠'}</span>
-      <span class="bulk-name" title="${esc(r.line)}">${r.name ? esc(r.name) : '<em>' + esc(snippet(r.line)) + '</em>'}</span>
+      ${nameCell}
       <span class="bulk-time">${esc(r.start || '—')}–${esc(r.end || '—')}</span>
-      <span class="bulk-reason">${r.valid ? '' : esc(r.reason)}</span>
+      ${reasonCell}
       <button class="bulk-x" onclick="removeBulkRow(${r.id})" title="Remove row">×</button>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 
   wrap.innerHTML = `
-    <div class="bulk-head">${validCount} of ${bulkRows.length} ready to add</div>
+    <div class="bulk-head" id="bulkHead"></div>
     <div class="bulk-list">${rows}</div>
-    <button class="btn-primary" onclick="addBulkShifts()" ${validCount ? '' : 'disabled'}>Add ${validCount} shift${validCount === 1 ? '' : 's'}</button>`;
+    <button class="btn-primary" id="bulkAddBtn" onclick="addBulkShifts()"></button>`;
   wrap.hidden = false;
+  updateBulkFooter();
+}
+
+/* Update the summary line and Add button in place (no re-render) so an inline
+   name edit never steals focus from the field being typed into. */
+function updateBulkFooter(){
+  const valid = bulkRows.filter(r => r.valid);
+  const newCount = valid.filter(r => r.isNew).length;
+  const head = document.getElementById('bulkHead');
+  const btn = document.getElementById('bulkAddBtn');
+  if(head) head.textContent = `${valid.length} of ${bulkRows.length} ready to add`
+    + (newCount ? ` · ${newCount} new employee${newCount === 1 ? '' : 's'}` : '');
+  if(btn){
+    btn.disabled = !valid.length;
+    btn.textContent = `Add ${valid.length} shift${valid.length === 1 ? '' : 's'}`;
+  }
+}
+
+/* Inline edit of a new row's name: revalidate (a rename can create or resolve a
+   duplicate against other rows) and refresh the badges without a full re-render. */
+function updateBulkName(id, value){
+  const r = bulkRows.find(x => x.id === id);
+  if(!r) return;
+  r.name = value;
+  revalidateBulk();
+  // Refresh every row's status (a rename can create/resolve a cross-row
+  // duplicate) but never rebuild the name inputs, so typing keeps focus.
+  bulkRows.forEach(row => {
+    const el = document.querySelector(`.bulk-row[data-id="${row.id}"]`);
+    if(!el) return;
+    el.classList.toggle('ok', row.valid);
+    el.classList.toggle('bad', !row.valid);
+    el.querySelector('.bulk-ic').textContent = row.valid ? '✓' : '⚠';
+    const reason = el.querySelector('.bulk-reason');
+    if(reason){
+      const isNewOk = row.valid && row.isNew;
+      reason.className = 'bulk-reason' + (isNewOk ? ' new' : '');
+      reason.textContent = row.valid ? (isNewOk ? '＋ new' : '') : row.reason;
+    }
+  });
+  updateBulkFooter();
 }
 
 function removeBulkRow(id){
   bulkRows = bulkRows.filter(r => r.id !== id);
+  revalidateBulk();
   renderBulkPreview();
 }
 
@@ -1868,16 +1974,39 @@ function clearBulkPreview(){
 function addBulkShifts(){
   const valid = bulkRows.filter(r => r.valid);
   if(!valid.length) return;
+
+  // Create any new employees first, coalescing rows (and matching existing
+  // names) so the same name never yields two employees.
   const base = Date.now();
+  const newByName = new Map();   // lowercased name -> id
+  let created = 0;
   valid.forEach((r, i) => {
-    shifts.push({ id: base + i, employeeId: r.employeeId, start: r.start, end: r.end, breaks: createBreaks(r.start, r.end) });
+    let employeeId = r.employeeId;
+    if(r.isNew){
+      const key = r.name.trim().toLowerCase();
+      if(newByName.has(key)){
+        employeeId = newByName.get(key);
+      } else {
+        const existing = employees.find(e => e.name.toLowerCase() === key);
+        if(existing){ employeeId = existing.id; }
+        else {
+          employeeId = base - (++created);   // distinct ids, separate from shift ids below
+          employees.push({ id: employeeId, name: r.name.trim() });
+        }
+        newByName.set(key, employeeId);
+      }
+    }
+    shifts.push({ id: base + i, employeeId, start: r.start, end: r.end, breaks: createBreaks(r.start, r.end) });
   });
+
   const added = valid.length, skipped = bulkRows.length - added;
   document.getElementById('shiftPaste').value = '';
   clearBulkPreview();
   saveData();
   render();
-  showToast(`Added ${added} shift${added === 1 ? '' : 's'}${skipped ? `, skipped ${skipped}` : ''}.`);
+  showToast(`Added ${added} shift${added === 1 ? '' : 's'}`
+    + (created ? `, created ${created} employee${created === 1 ? '' : 's'}` : '')
+    + (skipped ? `, skipped ${skipped}` : '') + '.');
 }
 
 /* Enable "Add Shift" only once an employee is selected and both Start and End
