@@ -3,5 +3,6 @@
 
 # …except the app, the landing page, and this ignore file
 !ShiftMonitor.html
+!ShiftMonitorStable.html
 !index.html
 !.gitignore
