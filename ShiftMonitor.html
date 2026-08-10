@@ -2857,7 +2857,7 @@ function toggleDraftMenu(e){
   e.stopPropagation();   // keep the document click-away handler from firing
   const menu = document.getElementById('draftMenu');
   if(!menu.hidden){ menu.hidden = true; return; }
-  menu.innerHTML = `<button class="dm-new" onclick="pickDraftEmployee('new')">＋ No name (new)</button>` +
+  menu.innerHTML = `<button class="dm-new" onclick="pickDraftEmployee('new')">＋ Draft</button>` +
     employees.map(emp => `<button onclick="pickDraftEmployee(${emp.id})">${esc(emp.name)}</button>`).join('');
   menu.hidden = false;
 }
@@ -2931,13 +2931,13 @@ document.addEventListener('click', () => {
 
 /* Placeholder names for drafts added without picking anyone: "No name",
    then "No name 2", "No name 3"… — renameable in the Team panel. */
-const NO_NAME_RE = /^No name( \d+)?$/;
+const NO_NAME_RE = /^Draft( \d+)?$/;
 
 function nextNoName(){
-  let n = 1, name = 'No name';
+  let n = 1, name = 'Draft';
   while(employees.some(e => e.name.toLowerCase() === name.toLowerCase())){
     n++;
-    name = 'No name ' + n;
+    name = 'Draft ' + n;
   }
   return name;
 }
