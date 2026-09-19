@@ -145,23 +145,63 @@ body{
   font-size:.88rem;
 }
 
-.stats{
+/* Stat tiles fill the left; the Break Rules tile is a content-width column
+   on the right. Every tile is exactly --tile-h tall, so the two always line
+   up. Opening the Break Rules tile drops it to its own full-width row. */
+.stats-row{
+  --tile-h:72px;
   display:grid;
-  grid-template-columns:repeat(auto-fit, minmax(140px, 1fr));
+  grid-template-columns:1fr auto;
   gap:14px;
+  align-items:start;
   margin-bottom:24px;
 }
+
+.stats{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(172px, 1fr));
+  gap:14px;
+}
+
+/* The collapsed tile is exactly --tile-h tall, like the stat cards. */
+.acc.rules-tile{ padding:0; margin-bottom:0; }
+.acc.rules-tile summary{
+  height:calc(var(--tile-h) - 2px);   /* minus the card border */
+  box-sizing:border-box;
+  padding:0 16px;
+  gap:8px;
+  font-size:.9rem;
+}
+.rules-head{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  min-width:0;
+  line-height:1.25;
+}
+.rules-title{
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.acc.rules-tile:not([open]) .rules-hint{ display:none; }   /* hint only when expanded */
+.acc.rules-tile[open]{ grid-column:1 / -1; }
+.acc.rules-tile[open] summary{ height:auto; padding:12px 16px; }
 
 .stat{
   background:var(--surface);
   border:1px solid var(--border);
   border-radius:var(--radius);
   box-shadow:var(--shadow);
-  padding:14px 16px;
+  padding:14px;
+  height:var(--tile-h);
+  box-sizing:border-box;
   display:flex;
   align-items:center;
-  gap:12px;
+  gap:10px;
+  min-width:0;
 }
+.stat > div{ min-width:0; }
 
 .stat-icon{
   width:40px;
@@ -183,6 +223,9 @@ body{
 .stat-label{
   font-size:.78rem;
   color:var(--text-2);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
 }
 
 .accordions{
@@ -260,6 +303,42 @@ body{
 
 .acc .add-row,
 .acc .field-row{ max-width:440px; }
+
+/* Break Rules panel: a grid of labelled dropdowns + a disclaimer */
+.rules-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(190px, 1fr));
+  gap:10px 14px;
+  max-width:760px;
+}
+.rules-grid label{ margin:0 0 4px; }
+.rules-grid select{ padding:7px 10px; font-size:.85rem; }
+.rules-sub{
+  grid-column:1 / -1;
+  font-size:.72rem;
+  font-weight:700;
+  letter-spacing:.04em;
+  text-transform:uppercase;
+  color:var(--text-3);
+  margin-top:6px;
+}
+.rules-note{
+  max-width:760px;
+  margin:16px 0 0;
+  padding:10px 12px;
+  border-radius:10px;
+  background:var(--amber-soft);
+  border:1px solid var(--amber-border);
+  font-size:.78rem;
+  color:var(--text-2);
+  line-height:1.45;
+}
+.rules-actions{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-top:12px;
+}
 
 .acc .btn-primary{
   width:auto;
@@ -935,12 +1014,12 @@ button:disabled{
 .gs-copy{
   position:relative;
   z-index:3;             /* stays clickable above the break marks */
-  width:16px;
-  height:16px;
+  width:18px;
+  height:18px;
   padding:0;
-  margin-right:4px;
+  margin-right:2px;
   border-radius:4px;
-  font-size:.62rem;
+  font-size:.74rem;
   line-height:1;
   display:inline-flex;
   align-items:center;
@@ -948,6 +1027,29 @@ button:disabled{
   background:white;
   border:1px solid var(--green-border);
   color:var(--green);
+}
+
+/* ⇄ sits at the left end of the bar, ⧉ at the right, so they're easy to tap */
+.gs-swap{ margin-left:2px; margin-right:auto; }
+
+/* Hover / keyboard-focus ring on the small bar buttons (⇄ ⧉ ✓ ×) */
+.gs-copy:hover, .gs-copy:focus-visible{
+  border-color:#22c55e;
+  box-shadow:0 0 0 2px #4ade80, 0 0 8px 2px #22c55e, 0 0 18px 4px rgba(34,197,94,.55);
+  filter:none;
+  outline:none;
+}
+.gd-btn:hover, .gd-btn:focus-visible{
+  border-color:#2dd4bf;
+  box-shadow:0 0 0 2px #5eead4, 0 0 8px 2px #2dd4bf, 0 0 18px 4px rgba(45,212,191,.55);
+  filter:none;
+  outline:none;
+}
+/* The track clips its bars; let the glow spill out only while a button is
+   hovered or focused, and lift that row above its neighbours. */
+.g-track:has(.gs-copy:hover, .gs-copy:focus-visible, .gd-btn:hover, .gd-btn:focus-visible){
+  overflow:visible;
+  z-index:5;
 }
 
 .g-break{
@@ -1214,11 +1316,11 @@ button:disabled{
 }
 
 .gd-btn{
-  width:16px;
-  height:16px;
+  width:18px;
+  height:18px;
   padding:0;
   border-radius:4px;
-  font-size:.62rem;
+  font-size:.74rem;
   line-height:1;
   display:inline-flex;
   align-items:center;
@@ -1419,7 +1521,9 @@ details[open] > summary .chev{ transform:rotate(180deg); }
 
 @media (max-width:920px){
   .accordions{ grid-template-columns:1fr; }
+  .stats-row{ grid-template-columns:1fr; }
   .stats{ grid-template-columns:repeat(2, 1fr); }
+  .acc.rules-tile{ grid-column:1 / -1; }
   .g-chart{ --glabel:90px; }
   .shift-row{ flex-wrap:wrap; }
   .shift-who{ width:auto; flex:1; }
@@ -1461,7 +1565,27 @@ details[open] > summary .chev{ transform:rotate(180deg); }
     Firefox…) to keep your data.
   </div>
 
-  <div class="stats" id="stats"></div>
+  <div class="stats-row">
+    <div class="stats" id="stats"></div>
+    <details class="card acc rules-tile" id="rulesAcc">
+      <summary>
+        <span class="rules-head">
+          <span class="rules-title">⏱️ Break Rules</span>
+          <span class="acc-hint rules-hint">quick breaks &amp; lunch timing</span>
+        </span>
+      </summary>
+      <div class="acc-body">
+        <div class="rules-grid" id="rulesGrid"></div>
+        <div class="rules-actions">
+          <button class="btn-outline btn-sm" onclick="resetBreakRules()">Reset to defaults</button>
+          <span class="ef-hint">Changes re-plan the breaks that haven't started yet on today's shifts.</span>
+        </div>
+        <p class="rules-note">⚠️ These timings are scheduling defaults, not legal guidance. Please refer to your
+          respective state and local labor laws for the quick-break and lunch-break rules that apply to your
+          workplace, and set the times above to match.</p>
+      </div>
+    </details>
+  </div>
 
   <div class="accordions">
 
@@ -1482,7 +1606,7 @@ details[open] > summary .chev{ transform:rotate(180deg); }
       <summary>🗓️ Schedule a Shift <span class="acc-hint">breaks planned automatically</span>
         <button class="btn-outline btn-sm acc-head-btn" onclick="event.stopPropagation(); startNewDay()" title="Clear all shifts and break history, keep employees">⟳ New Day</button></summary>
       <div class="acc-body">
-        <p class="hint">A 10-min break 2h in (shifts 2h10+) · 30-min lunch on shifts over 5h · second 10-min break after lunch on shifts over 5h30.</p>
+        <p class="hint" id="rulesHint"></p>
 
         <label for="shiftPaste">Paste shift text <span class="lbl-hint">optional</span></label>
         <textarea id="shiftPaste" class="shift-paste" rows="2"
@@ -1515,6 +1639,7 @@ details[open] > summary .chev{ transform:rotate(180deg); }
         <button class="btn-primary" id="addShiftBtn" onclick="addShift()" disabled>Add Shift</button>
       </div>
     </details>
+
 
   </div>
 
@@ -1562,7 +1687,7 @@ details[open] > summary .chev{ transform:rotate(180deg); }
 
 <footer class="site-foot">
   <a href="https://dad.mohajiho.com" target="_blank" rel="noopener"
-     title="Update to the latest version on https://dad.mohajiho.com">version 3.0</a>
+     title="Update to the latest version on https://dad.mohajiho.com">version 3.1</a>
 </footer>
 
 <script>
@@ -1623,6 +1748,50 @@ let historyLog = load('historyLog').filter(h => h && h.employee && h.type);
    minutes {s, e} — they become real shifts with breaks when confirmed. */
 let draftShifts = load('draftShifts').filter(d =>
   d && d.id != null && Number.isFinite(d.s) && Number.isFinite(d.e) && d.e > d.s);
+
+/* ---------- Break rules (all values in minutes) ----------
+   Set from dropdowns in the Break Rules panel; drive createBreaks(). */
+const BREAK_RULE_DEFAULTS = {
+  restLen: 10,        // quick break length (0 = no quick breaks)
+  restEvery: 180,     // one quick break per this much work (or the major part of it)
+  restMinShift: 120,  // quick breaks only on shifts longer than this
+  lunchLen: 30,       // lunch length
+  lunchAfter: 300,    // lunch only on shifts longer than this (0 = never)
+  lunchAt: 300,       // lunch starts this far into the shift (earlier if it wouldn't fit)
+  lunch2After: 600    // second lunch on shifts longer than this (0 = never)
+};
+
+const H = m => m % 60 ? `${Math.floor(m/60)}h ${m%60}m` : `${m/60}h`;
+const BREAK_RULE_FIELDS = [
+  { group:'Quick breaks' },
+  { key:'restLen',      label:'Quick break length',
+    opts:[[0,'No quick breaks'],[5,'5 min'],[10,'10 min'],[15,'15 min'],[20,'20 min']] },
+  { key:'restEvery',    label:'One quick break every',
+    opts:[120,150,180,210,240,270,300,360].map(m => [m, H(m) + ' of work']) },
+  { key:'restMinShift', label:'Only on shifts longer than',
+    opts:[60,90,120,150,180,210,240].map(m => [m, H(m)]) },
+  { group:'Lunch' },
+  { key:'lunchLen',     label:'Lunch length',
+    opts:[[20,'20 min'],[30,'30 min'],[45,'45 min'],[60,'60 min']] },
+  { key:'lunchAfter',   label:'Lunch on shifts longer than',
+    opts:[[0,'No lunch'], ...[240,300,360,420,480].map(m => [m, H(m)])] },
+  { key:'lunchAt',      label:'Lunch starts',
+    opts:[120,150,180,210,240,270,300,330,360].map(m => [m, H(m) + ' into the shift']) },
+  { key:'lunch2After',  label:'Second lunch on shifts longer than',
+    opts:[[0,'No second lunch'], ...[480,540,600,660,720].map(m => [m, H(m)])] }
+];
+
+let breakRules = (() => {
+  let saved = {};
+  try{ saved = JSON.parse(store.getItem('breakRules')) || {}; } catch(e){}
+  const out = { ...BREAK_RULE_DEFAULTS };
+  BREAK_RULE_FIELDS.forEach(f => {
+    if(!f.key) return;
+    const v = Number(saved[f.key]);
+    if(f.opts.some(o => o[0] === v)) out[f.key] = v;   // only values the dropdown offers
+  });
+  return out;
+})();
 
 function saveData(){
   store.setItem('employees', JSON.stringify(employees));
@@ -1797,30 +1966,117 @@ function getEmployeeName(id){
 
 /* ---------- Break scheduling ---------- */
 
-/* Break rules — every break must fit inside the shift:
-   - 10-min Break #1, 2h in (only on shifts of 2h10+ — shorter shifts get none)
-   - over 5h (301+ min): 30-min Lunch, 5h in (pulled earlier if it wouldn't fit)
-   - over 5h30 (331+ min): 10-min Break #2, midway between lunch end and shift end */
+/* Plan the breaks for a shift from the Break Rules settings. Every break
+   must fit inside the shift and breaks never overlap each other.
+   - Lunch: on shifts longer than lunchAfter, starting lunchAt in (pulled
+     earlier if it wouldn't fit). A second lunch on shifts over lunch2After.
+   - Quick breaks: the shift is cut into restEvery-long blocks; each full
+     block, plus a final block that is more than half full, gets one break,
+     placed near the middle of its block. A break that would land on a lunch
+     is moved to right after the lunch. */
 function createBreaks(start, end){
-  const shiftMinutes = minutesBetween(start, end);
-  const mk = (type, offset, expected) => ({
-    type, scheduled:addMinutes(start, offset), expected,
-    status:'scheduled', actualStart:null, actualEnd:null
-  });
+  const R = breakRules;
+  const total = minutesBetween(start, end);
+  const plan = [];   // { type, off, len }
 
-  const breaks = [];
-
-  if(shiftMinutes >= 130) breaks.push(mk('Break #1', 120, 10));
-
-  if(shiftMinutes > 300){
-    breaks.push(mk('Lunch', Math.min(300, shiftMinutes - 30), 30));
-    if(shiftMinutes > 330){
-      breaks.push(mk('Break #2',
-        Math.min(330 + Math.floor((shiftMinutes - 330) / 2), shiftMinutes - 10), 10));
+  if(R.lunchAfter && total > R.lunchAfter && total > R.lunchLen){
+    const off = Math.min(R.lunchAt, total - R.lunchLen);
+    plan.push({ type:'Lunch', off, len:R.lunchLen });
+    if(R.lunch2After && total > R.lunch2After){
+      const off2 = Math.min(R.lunch2After, total - R.lunchLen);
+      if(off2 >= off + R.lunchLen) plan.push({ type:'Lunch #2', off:off2, len:R.lunchLen });
     }
   }
 
-  return breaks;
+  if(R.restLen && total > R.restMinShift){
+    const n = Math.floor((total + R.restEvery / 2 - 1) / R.restEvery);
+    const lunches = plan.filter(b => b.type.startsWith('Lunch'));
+    for(let i = 0; i < n; i++){
+      const blockStart = i * R.restEvery, blockEnd = Math.min((i + 1) * R.restEvery, total);
+      let off = Math.floor((blockStart + blockEnd) / 2 / 5) * 5;
+      lunches.forEach(l => { if(off < l.off + l.len && off + R.restLen > l.off) off = l.off + l.len; });
+      plan.push({ type:'rest', off, len:R.restLen });
+    }
+  }
+
+  // Chronological, no overlaps, nothing past the end of the shift.
+  plan.sort((a, b) => a.off - b.off);
+  const out = [];
+  let cursor = 0, restNo = 0;
+  plan.forEach(b => {
+    const off = Math.max(b.off, cursor);
+    if(off + b.len > total) return;
+    cursor = off + b.len;
+    const type = b.type === 'rest' ? `Break #${++restNo}` : b.type;
+    out.push({ type, scheduled:addMinutes(start, off), expected:b.len,
+               status:'scheduled', actualStart:null, actualEnd:null });
+  });
+  return out;
+}
+
+/* Re-plan a shift's breaks from the rules for its working window, carrying
+   over any break that already ran (matched by type) so its record isn't lost. */
+function replanBreaks(shift){
+  const old = shift.breaks || [];
+  const plan = planBreaksFor(shift.start, shift.end, offStartMin(shift), offEndMin(shift));
+  plan.forEach(nb => {
+    const ran = old.find(b => b.type === nb.type && b.status !== 'scheduled');
+    if(ran){
+      nb.status = ran.status;
+      nb.actualStart = ran.actualStart;
+      nb.actualEnd = ran.actualEnd;
+    }
+  });
+  old.filter(b => b.status !== 'scheduled' && !plan.some(nb => nb.type === b.type))
+     .forEach(b => plan.push(b));
+  shift.breaks = plan;
+}
+
+/* ---------- Break Rules panel ---------- */
+
+function breakRulesSummary(){
+  const R = breakRules, parts = [];
+  parts.push(R.restLen
+    ? `${R.restLen}-min quick break every ${H(R.restEvery)} on shifts over ${H(R.restMinShift)}`
+    : 'no quick breaks');
+  parts.push(R.lunchAfter
+    ? `${R.lunchLen}-min lunch ${H(R.lunchAt)} in on shifts over ${H(R.lunchAfter)}`
+    : 'no lunch');
+  if(R.lunchAfter && R.lunch2After) parts.push(`second lunch on shifts over ${H(R.lunch2After)}`);
+  return parts.join(' · ') + '. Adjust in Break Rules.';
+}
+
+function renderBreakRules(){
+  const grid = document.getElementById('rulesGrid');
+  if(grid) grid.innerHTML = BREAK_RULE_FIELDS.map(f => f.group
+    ? `<div class="rules-sub">${f.group}</div>`
+    : `<div>
+         <label for="rule_${f.key}">${f.label}</label>
+         <select id="rule_${f.key}" onchange="setBreakRule('${f.key}', this.value)">
+           ${f.opts.map(([v, t]) => `<option value="${v}"${v === breakRules[f.key] ? ' selected' : ''}>${t}</option>`).join('')}
+         </select>
+       </div>`).join('');
+  const hint = document.getElementById('rulesHint');
+  if(hint) hint.textContent = breakRulesSummary();
+}
+
+function applyBreakRules(){
+  store.setItem('breakRules', JSON.stringify(breakRules));
+  shifts.forEach(replanBreaks);
+  saveData();
+  render();
+}
+
+function setBreakRule(key, value){
+  breakRules[key] = Number(value);
+  applyBreakRules();
+  showToast('Break rules updated — upcoming breaks re-planned.');
+}
+
+function resetBreakRules(){
+  breakRules = { ...BREAK_RULE_DEFAULTS };
+  applyBreakRules();
+  showToast('Break rules reset to defaults.');
 }
 
 /* ---------- Actions ---------- */
@@ -2091,7 +2347,7 @@ function parseSingleShift(text){
   }
 
   // --- Employee ---
-  if(!employees.length){
+  if(!rosterEmployees().length){
     parts.push('add a team member first');
     warn = true;
   } else {
@@ -2347,7 +2603,7 @@ function addShift(){
   const error = document.getElementById('shiftError');
 
   if(!selectedEmployeeId){
-    error.textContent = employees.length
+    error.textContent = rosterEmployees().length
       ? 'Select an employee above first.'
       : 'Add a team member first, then select them here.';
     error.hidden = false;
@@ -2412,11 +2668,16 @@ function editShiftFromChart(id){
   }
 
   const { s, e } = shiftSpan(shift);
+  const name = getEmployeeName(shift.employeeId);
   shifts = shifts.filter(x => x.id !== id);
-  draftShifts.push({ id:Date.now(), employeeId:shift.employeeId, s, e });
+  // A placeholder ("Draft") shift goes back to a nameless draft carrying its
+  // own label, so the backing roster entry can be dropped again.
+  const placeholder = NO_NAME_RE.test(name);
+  draftShifts.push({ id:Date.now(), employeeId: placeholder ? null : shift.employeeId, name: placeholder ? name : null, s, e });
+  pruneNoNames();
   saveData();
   render();
-  showToast(`${getEmployeeName(shift.employeeId)}'s shift is a draft again — drag it, resize the edges, ✓ to re-schedule.`);
+  showToast(`${name}'s shift is a draft again — drag it, resize the edges, ✓ to re-schedule.`);
 }
 
 function cancelShiftEdit(){
@@ -2524,24 +2785,9 @@ function saveShiftEdit(id){
     }
   });
 
-  const old = shift.breaks;
   shift.start = start;
   shift.end = end;
-
-  // Re-plan breaks from the rules for the working window, then carry over any
-  // break that already ran (matched by type) so its record isn't lost.
-  const plan = planBreaksFor(start, end, offStartMin(shift), offEndMin(shift));
-  plan.forEach(nb => {
-    const ran = old.find(b => b.type === nb.type && b.status !== 'scheduled');
-    if(ran){
-      nb.status = ran.status;
-      nb.actualStart = ran.actualStart;
-      nb.actualEnd = ran.actualEnd;
-    }
-  });
-  old.filter(b => b.status !== 'scheduled' && !plan.some(nb => nb.type === b.type))
-     .forEach(b => plan.push(b));
-  shift.breaks = plan;
+  replanBreaks(shift);
 
   // Punches define the records — rebuild this shift's history to match.
   historyLog = historyLog.filter(h => h.shiftId !== id);
@@ -2559,6 +2805,7 @@ function saveShiftEdit(id){
 function deleteShift(id){
   if(!confirm('Remove this shift?')) return;
   shifts = shifts.filter(s=>s.id!==id);
+  pruneNoNames();                     // a placeholder with no shift left goes too
   saveData();
   render();
 }
@@ -2703,11 +2950,14 @@ function copyName(el){
   copyText(el.textContent.trim());
 }
 
-/* Copy button on a confirmed-from-draft bar: "start - end - 4h30m". */
+/* Copy button on a confirmed-from-draft bar: "09:00 - 13:30".
+   Shift start/end are already stored as 24-hour HH:MM strings, so they're
+   copied as-is rather than run through formatTime (which renders 12h AM/PM
+   for on-screen display only). */
 function copyShiftTimes(id){
   const s = shifts.find(x => x.id === id);
   if(!s) return;
-  copyText(`${formatTime(s.start)} - ${formatTime(s.end)} - ${fmtDurShort(minutesBetween(s.start, s.end))}`);
+  copyText(`${s.start} - ${s.end}`);
 }
 
 function startBreak(shiftId, index){
@@ -2858,13 +3108,20 @@ function toggleDraftMenu(e){
   const menu = document.getElementById('draftMenu');
   if(!menu.hidden){ menu.hidden = true; return; }
   menu.innerHTML = `<button class="dm-new" onclick="pickDraftEmployee('new')">＋ Draft</button>` +
-    employees.map(emp => `<button onclick="pickDraftEmployee(${emp.id})">${esc(emp.name)}</button>`).join('');
+    rosterEmployees().map(emp => `<button onclick="pickDraftEmployee(${emp.id})">${esc(emp.name)}</button>`).join('');
   menu.hidden = false;
 }
 
 function pickDraftEmployee(choice){
   document.getElementById('draftMenu').hidden = true;
   addDraft(choice);
+}
+
+/* A draft's display name: an unassigned placeholder draft carries its own
+   name (it is NOT added to the Team roster while it's still just a draft),
+   otherwise it's the actual employee it was created for. */
+function draftDisplayName(d){
+  return d.name || getEmployeeName(d.employeeId);
 }
 
 /* ⇄ on a no-name bar: swap the placeholder for an actual employee. The menu
@@ -2886,7 +3143,7 @@ function getAssignMenu(){
 
 function openAssignMenu(e, shiftId){
   e.stopPropagation();
-  const real = employees.filter(emp => !NO_NAME_RE.test(emp.name));
+  const real = rosterEmployees();
   if(!real.length){
     showToast('No named employees yet — add one in the Team panel, or rename this placeholder.');
     return;
@@ -2929,13 +3186,23 @@ document.addEventListener('click', () => {
   });
 });
 
-/* Placeholder names for drafts added without picking anyone: "No name",
-   then "No name 2", "No name 3"… — renameable in the Team panel. */
+/* Placeholder names for drafts added without picking anyone: "Draft",
+   then "Draft 2", "Draft 3"… — renameable in the Team panel once the draft
+   is actually scheduled (drafts themselves never touch the roster). */
 const NO_NAME_RE = /^Draft( \d+)?$/;
+
+/* The roster as the Team section shows it: placeholder "Draft" employees are
+   hidden bookkeeping behind scheduled draft shifts and never appear there,
+   nor in the shift picker, the Team count, or the ＋ Draft menu. */
+function rosterEmployees(){
+  return employees.filter(e => !NO_NAME_RE.test(e.name));
+}
 
 function nextNoName(){
   let n = 1, name = 'Draft';
-  while(employees.some(e => e.name.toLowerCase() === name.toLowerCase())){
+  const taken = nm => employees.some(e => e.name.toLowerCase() === nm.toLowerCase())
+    || draftShifts.some(d => (d.name || '').toLowerCase() === nm.toLowerCase());
+  while(taken(name)){
     n++;
     name = 'Draft ' + n;
   }
@@ -2943,8 +3210,8 @@ function nextNoName(){
 }
 
 /* Drop placeholder employees that no longer back anything — runs when a
-   draft is discarded, so a thrown-away no-name draft doesn't leave a
-   stray "No name" in the roster. Renamed placeholders are kept. */
+   confirmed placeholder shift is swapped for a real employee, so it doesn't
+   leave a stray "Draft" entry in the roster. Renamed placeholders are kept. */
 function pruneNoNames(){
   employees = employees.filter(e =>
     !NO_NAME_RE.test(e.name) ||
@@ -2983,46 +3250,63 @@ function findLargestGap(){
   return { s:tail, e:tail + 240 };
 }
 
+/* 'new' (or nothing): the draft gets its own placeholder name but is NOT
+   added to the Team roster — it only becomes a real employee once it's
+   actually scheduled (see confirmDraft). An existing employee id: the
+   draft is tied to that employee from the start. */
 function addDraft(choice){
-  // 'new' (or nothing): create a fresh no-name placeholder employee.
-  let empId, newName = '';
+  let empId = null, newName = '';
   if(choice === 'new' || !choice){
     newName = nextNoName();
-    empId = Date.now() - 1;   // distinct from the draft id minted below
-    employees.push({ id: empId, name: newName });
   } else {
     empId = Number(choice);
   }
 
   const gap = findLargestGap();
-  draftShifts.push({ id:Date.now(), employeeId:empId, s:gap.s, e:gap.e });
+  draftShifts.push({ id:Date.now(), employeeId:empId, name:newName || null, s:gap.s, e:gap.e });
   saveData();
   render();
   showToast(`Draft added ${formatTime(minToHM(gap.s))} – ${formatTime(minToHM(gap.e))}`
-    + (newName ? ` for “${newName}” (rename them in the Team panel)` : '')
-    + ' — drag it, resize the edges, ✓ to schedule.');
+    + (newName ? ` for “${newName}”` : '')
+    + ' — drag it, resize the edges, ✓ to schedule.'
+    + (newName ? ' Assign a real employee with ⇄ once it’s scheduled.' : ''));
 }
 
 function removeDraft(id){
   draftShifts = draftShifts.filter(d => d.id !== id);
-  pruneNoNames();
   saveData();
   render();
 }
 
+/* Scheduling a draft turns it into a real shift. An unassigned placeholder
+   draft (employeeId null) becomes a real Team member only now — reusing an
+   existing employee of the same name if one already exists. */
 function confirmDraft(id){
   const d = draftShifts.find(x => x.id === id);
   if(!d) return;
   const start = minToHM(d.s), end = minToHM(d.e);
-  if(shifts.some(s => s.employeeId === d.employeeId && s.start === start && s.end === end)){
-    showToast(`${getEmployeeName(d.employeeId)} already has a ${start}–${end} shift.`);
+
+  let empId = d.employeeId;
+  if(empId == null){
+    const name = d.name || nextNoName();
+    const existing = employees.find(e => e.name.toLowerCase() === name.toLowerCase());
+    if(existing){
+      empId = existing.id;
+    } else {
+      empId = Date.now() - 1;   // distinct from the shift id minted below
+      employees.push({ id: empId, name });
+    }
+  }
+
+  if(shifts.some(s => s.employeeId === empId && s.start === start && s.end === end)){
+    showToast(`${getEmployeeName(empId)} already has a ${start}–${end} shift.`);
     return;
   }
-  shifts.push({ id:Date.now(), employeeId:d.employeeId, start, end, breaks:createBreaks(start, end), fromDraft:true });
+  shifts.push({ id:Date.now(), employeeId:empId, start, end, breaks:createBreaks(start, end), fromDraft:true });
   draftShifts = draftShifts.filter(x => x.id !== id);
   saveData();
   render();
-  showToast(`Scheduled ${getEmployeeName(d.employeeId)} ${formatTime(start)} – ${formatTime(end)}.`);
+  showToast(`Scheduled ${getEmployeeName(empId)} ${formatTime(start)} – ${formatTime(end)}.`);
 }
 
 /* Drag to move, edge-grips to resize. Deltas convert px → minutes using the
@@ -3327,14 +3611,14 @@ function scheduleSummary(){
   let schedMins = 0, lunchMins = 0, lunchCount = 0;
   shifts.forEach(s => {
     schedMins += minutesBetween(s.start, s.end);
-    s.breaks.forEach(b => { if(b.type === 'Lunch'){ lunchMins += b.expected; lunchCount++; } });
+    s.breaks.forEach(b => { if(b.type.startsWith('Lunch')){ lunchMins += b.expected; lunchCount++; } });
   });
   const netMins = Math.max(0, schedMins - lunchMins);
   return {
     schedMins, lunchMins, lunchCount, netMins,
     netHours: Math.round(netMins / 60 * 10) / 10,
     shiftCount: shifts.length,
-    teamCount: employees.length,
+    teamCount: rosterEmployees().length,
     scheduledCount: new Set(shifts.map(s => s.employeeId)).size
   };
 }
@@ -3356,11 +3640,12 @@ function renderStats(){
   }));
 
   const scheduledIds = new Set(shifts.map(s => s.employeeId));
-  const teamTip = employees.length
-    ? employees.map(e => `${e.name}${scheduledIds.has(e.id) ? ' · scheduled today' : ' · no shift today'}`).join('\n')
+  const roster = rosterEmployees();
+  const teamTip = roster.length
+    ? roster.map(e => `${e.name}${scheduledIds.has(e.id) ? ' · scheduled today' : ' · no shift today'}`).join('\n')
     : 'No employees yet — add them in the Team panel';
 
-  const scheduledNames = employees.filter(e => scheduledIds.has(e.id)).map(e => e.name);
+  const scheduledNames = roster.filter(e => scheduledIds.has(e.id)).map(e => e.name);
   const scheduledTip = scheduledNames.length ? scheduledNames.join('\n') : 'No team members scheduled yet';
 
   const tip = (lines, empty) => lines.length ? lines.join('\n') : empty;
@@ -3378,7 +3663,7 @@ function renderStats(){
 
   const cards = [
     { icon:'⏱️', bg:'var(--green-soft)',  label:'Scheduled hrs',  num:hoursNum, tip:hoursTip },
-    { icon:'👥', bg:'var(--accent-soft)', label:'Team members', num:employees.length, tip:teamTip },
+    { icon:'👥', bg:'var(--accent-soft)', label:'Team members', num:rosterEmployees().length, tip:teamTip },
     { icon:'🗓️', bg:'var(--blue-soft)',   label:'Scheduled',    num:scheduledIds.size, tip:scheduledTip },
     { icon:'☕', bg:'var(--blue-soft)',   label:'On break now',  num:active.length,
       tip:tip(active, 'No one is on a break right now') },
@@ -3411,9 +3696,10 @@ function renderStats(){
 
 function renderEmployees(){
   const list = document.getElementById('employeeList');
+  const roster = rosterEmployees();
 
-  list.innerHTML = employees.length
-    ? employees.map(e => e.id === editingEmployeeId
+  list.innerHTML = roster.length
+    ? roster.map(e => e.id === editingEmployeeId
         ? `<span class="pill">
              <span class="avatar" style="background:${avatarColor(e.name)}">${esc(initials(e.name))}</span>
              <input id="employeeEdit" class="pill-edit" type="text" value="${esc(e.name)}"
@@ -3432,10 +3718,10 @@ function renderEmployees(){
   const chipSearch = document.getElementById('chipSearch');
   const q = (chipSearch ? chipSearch.value : '').trim().toLowerCase();
   // Only worth showing the search box once there's more than one name.
-  if(chipSearch) chipSearch.style.display = employees.length > 1 ? '' : 'none';
+  if(chipSearch) chipSearch.style.display = roster.length > 1 ? '' : 'none';
 
-  const chipMatches = employees.filter(e => e.name.toLowerCase().includes(q));
-  document.getElementById('employeeChips').innerHTML = !employees.length
+  const chipMatches = roster.filter(e => e.name.toLowerCase().includes(q));
+  document.getElementById('employeeChips').innerHTML = !roster.length
     ? `<span class="hint" style="margin:0">Add a team member first.</span>`
     : chipMatches.length
       ? chipMatches.map(e=>`
@@ -3553,10 +3839,10 @@ function renderGantt(){
     const sl = pos(start), sw = pos(end) - sl;
     const copyBtn = shift.fromDraft
       ? `<button class="gs-copy" onclick="copyShiftTimes(${shift.id})"
-                 title="Copy start – end – duration">⧉</button>`
+                 title="Copy start – end times">⧉</button>`
       : '';
     const swapBtn = shift.fromDraft && NO_NAME_RE.test(name)
-      ? `<button class="gs-copy" onclick="openAssignMenu(event, ${shift.id})"
+      ? `<button class="gs-copy gs-swap" onclick="openAssignMenu(event, ${shift.id})"
                  title="Swap the placeholder for an actual employee">⇄</button>`
       : '';
     return `
@@ -3569,7 +3855,7 @@ function renderGantt(){
   // A draft bar: dashed, draggable, with a live preview of the breaks the
   // shift would get and ✓/× tools to confirm or discard it.
   const draftContent = d => {
-    const name = getEmployeeName(d.employeeId);
+    const name = draftDisplayName(d);
     const dur = d.e - d.s;
     const start = minToHM(d.s), end = minToHM(d.e);
     const marks = createBreaks(start, end).map(br => {
@@ -3602,27 +3888,28 @@ function renderGantt(){
   let rows;
   if(ganttMode === 'employee'){
     // one lane per employee, all their shifts (and drafts) drawn on it;
-    // earliest-start employee on top
-    const byEmp = new Map();
-    const addLane = (empId, start, html) => {
-      if(!byEmp.has(empId)) byEmp.set(empId, []);
-      byEmp.get(empId).push({ start, html });
+    // earliest-start employee on top. Unassigned placeholder drafts (not on
+    // the Team roster) each get their own lane, keyed by draft id.
+    const byKey = new Map();
+    const addLane = (key, label, start, html) => {
+      if(!byKey.has(key)) byKey.set(key, { label, items:[] });
+      byKey.get(key).items.push({ start, html });
     };
-    spans.forEach(sp => addLane(sp.shift.employeeId, sp.start, trackContent(sp.shift, sp.start, sp.end)));
-    draftSpans.forEach(dp => addLane(dp.draft.employeeId, dp.start, draftContent(dp.draft)));
-    rows = [...byEmp.entries()]
-      .sort((a,b) => Math.min(...a[1].map(x=>x.start)) - Math.min(...b[1].map(x=>x.start)))
-      .map(([empId, group], i) => row(
-        i + 1,
-        getEmployeeName(empId),
-        group.map(x => x.html).join('')
-      )).join('');
+    spans.forEach(sp => addLane(sp.shift.employeeId, getEmployeeName(sp.shift.employeeId),
+      sp.start, trackContent(sp.shift, sp.start, sp.end)));
+    draftSpans.forEach(dp => addLane(
+      dp.draft.employeeId != null ? dp.draft.employeeId : 'draft-' + dp.draft.id,
+      draftDisplayName(dp.draft) + (dp.draft.employeeId == null ? ' · draft' : ''),
+      dp.start, draftContent(dp.draft)));
+    rows = [...byKey.values()]
+      .sort((a,b) => Math.min(...a.items.map(x=>x.start)) - Math.min(...b.items.map(x=>x.start)))
+      .map((group, i) => row(i + 1, group.label, group.items.map(x => x.html).join(''))).join('');
   } else {
     // one lane per shift (default), real and draft lanes interleaved by start
     const lanes = [
       ...spans.map(sp => ({ start:sp.start, label:getEmployeeName(sp.shift.employeeId),
                             inner:trackContent(sp.shift, sp.start, sp.end), cls:'' })),
-      ...draftSpans.map(dp => ({ start:dp.start, label:getEmployeeName(dp.draft.employeeId) + ' · draft',
+      ...draftSpans.map(dp => ({ start:dp.start, label:draftDisplayName(dp.draft) + ' · draft',
                                  inner:draftContent(dp.draft), cls:'draft' }))
     ].sort((a,b) => a.start - b.start);
     rows = lanes.map((ln, i) => row(i + 1, ln.label, ln.inner, ln.cls)).join('');
@@ -3919,6 +4206,7 @@ function renderHistory(){
 function render(){
   renderClock();
   renderStats();
+  renderBreakRules();
   renderEmployees();
   renderGantt();
   renderDashboard();
@@ -3928,7 +4216,9 @@ function render(){
 setInterval(()=>{
   renderClock();
   renderStats();
-  renderGantt();
+  // Rebuilding the timeline would recreate a button the pointer is on and
+  // reset its hover ring every second, so hold off while one is hovered.
+  if(!document.querySelector('.gs-copy:hover, .gd-btn:hover')) renderGantt();
   if(editingShiftId === null) renderDashboard();  // don't wipe open edit fields
   checkBreakReminders();
 }, 1000);
@@ -3939,7 +4229,7 @@ setGanttMode(ganttMode);   // reflect persisted Timeline view on the toggle
 
 // First run: open the Team accordion so new users see where to start.
 if(!employees.length){
-  document.querySelector('.acc').open = true;
+  document.querySelector('.accordions .acc').open = true;
 }
 
 </script>
