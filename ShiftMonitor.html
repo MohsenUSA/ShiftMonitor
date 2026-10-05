@@ -3084,6 +3084,7 @@ function startNewDay(){
   shifts = [];
   historyLog = [];
   draftShifts = [];
+  pruneNoNames();                     // placeholders backed only by today's shifts go too
   editingShiftId = null;
   openHist.clear();
   remindedKeys.clear();
@@ -3577,6 +3578,7 @@ function clearHistory(){
   if(!historyLog.length) return;
   if(!confirm('Clear all break history?')) return;
   historyLog = [];
+  pruneNoNames();                     // history no longer keeps old placeholders alive
   saveData();
   render();
 }
@@ -4223,6 +4225,10 @@ setInterval(()=>{
   checkBreakReminders();
 }, 1000);
 
+// Hidden placeholders left behind by earlier days (or older versions) would
+// otherwise push the next draft's number up; drop any that back nothing.
+pruneNoNames();
+saveData();
 render();
 renderBell();
 setGanttMode(ganttMode);   // reflect persisted Timeline view on the toggle
