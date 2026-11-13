@@ -1,8 +1,33 @@
-# Ignore everything…
-*
+# dependencies
+node_modules/
 
-# …except the app, the landing page, and this ignore file
-!ShiftMonitor.html
-!ShiftMonitorStable.html
-!index.html
-!.gitignore
+# next.js
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+
+# env files
+.env*
+!.env.example
+
+# testing
+coverage/
+playwright-report/
+test-results/
+
+# amplify (later)
+.amplify/
+amplify_outputs*
+
+# misc
+.DS_Store
+*.log
+.vercel
+
+# old local snapshots — never tracked
+legacy/backup/
+.vscode/
+
+# local dev backend data
+.data/
